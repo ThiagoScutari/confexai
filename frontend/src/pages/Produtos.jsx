@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Package, ChevronRight } from "lucide-react";
 import { listProducts, createProduct } from "../services/api";
+import { useToast } from "../components/Toast";
 
 export default function Produtos() {
   const [products, setProducts] = useState([]);
@@ -10,6 +11,7 @@ export default function Produtos() {
   const [form, setForm] = useState({ name: "", category: "", fabric: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     listProducts()
@@ -26,6 +28,10 @@ export default function Produtos() {
       setProducts(r.data.data);
       setShowForm(false);
       setForm({ name: "", category: "", fabric: "", notes: "" });
+      toast("Produto criado com sucesso", "success");
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Erro ao criar produto";
+      toast(msg, "error");
     } finally {
       setSubmitting(false);
     }
@@ -114,7 +120,19 @@ export default function Produtos() {
 
       {/* Lista */}
       {loading ? (
-        <div className="text-sm text-neutral-500">Carregando...</div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-surface-800 border border-surface-700 rounded-lg px-5 py-4 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-surface-700 rounded" />
+                <div className="space-y-2">
+                  <div className="h-3 w-40 bg-surface-700 rounded" />
+                  <div className="h-2 w-24 bg-surface-700 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16 text-neutral-600">
           <Package size={40} className="mx-auto mb-3 opacity-30" />
@@ -137,7 +155,15 @@ export default function Produtos() {
                   <p className="text-xs text-neutral-500 mt-0.5">{p.category} · {p.fabric}</p>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/resultados/${p.id}`); }}
+                  className="text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1 rounded hover:bg-surface-600 transition-all"
+                >
+                  Resultados
+                </button>
+                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+              </div>
             </button>
           ))}
         </div>
