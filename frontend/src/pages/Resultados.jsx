@@ -14,6 +14,14 @@ const VIEW_LABELS = {
   lat_direita: "Lat. D", lat_esquerda: "Lat. E"
 };
 
+const buildFilename = (job) => {
+  const color = (job.result?.color_hex || "#000").replace("#", "").toLowerCase();
+  const view = job.view || "img";
+  const viewLabel = { frente: "frente", costas: "costas", lat_direita: "lat-d", lat_esquerda: "lat-e" }[view] || view;
+  const hash = job.id.slice(0, 6);
+  return `confexai_${color}_${viewLabel}_${hash}.jpg`;
+};
+
 export default function Resultados() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -194,8 +202,7 @@ export default function Resultados() {
           setTimeout(() => {
             const a = document.createElement("a");
             a.href = `${API_BASE}${job.result.jpg_url}`;
-            const color = (job.result.color_hex || "").replace("#", "");
-            a.download = `${color}_${job.view || "img"}_${job.id.slice(0, 6)}.jpg`;
+            a.download = buildFilename(job);
             a.click();
           }, delay);
           delay += 300;
@@ -364,10 +371,8 @@ export default function Resultados() {
                           const jpgUrl = result?.jpg_url;
                           const fullUrl = jpgUrl ? `${API_BASE}${jpgUrl}` : null;
                           const colorHex = result?.color_hex || "#888";
-                          const colorName = colorHex.replace("#", "");
                           const viewLabel = VIEW_LABELS[job.view] || job.view || "";
-                          const shortId = job.id.slice(0, 6);
-                          const filename = `${colorName}_${job.view || "img"}_${shortId}.jpg`;
+                          const filename = buildFilename(job);
 
                           const isJobSelected = selectedImages.has(job.id);
 
