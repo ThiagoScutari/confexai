@@ -155,7 +155,9 @@ def create_color_variation(
             )
             db.add(variant)
 
+            method = result.get("method", "gemini")
             job.status = JobStatus.pending_review
+            job.api_used = "gemini" if method == "gemini" else "gemini_fallback_pillow"
             job.cost_cents = result["cost_cents"]
             job.result = json.dumps(result, ensure_ascii=False)
             job.completed_at = datetime.utcnow()
@@ -169,6 +171,8 @@ def create_color_variation(
                 "png_url": result["png_url"],
                 "jpg_url": result["jpg_url"],
                 "cost_cents": result["cost_cents"],
+                "method": method,
+                "view": image.view,
             })
 
         except Exception as e:
@@ -191,6 +195,44 @@ def create_color_variation(
 
 class RejectRequest(BaseModel):
     reason: str
+
+
+@router.get("")
+def list_jobs(
+    product_id: str | None = None,
+    type: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    query = db.query(GenerationJob)
+
+    if product_id:
+        query = query.join(ProductImage).filter(
+            ProductImage.product_id == product_id
+        )
+    if type:
+        query = query.filter(GenerationJob.type == type)
+    if status:
+        query = query.filter(GenerationJob.status == status)
+
+    jobs = query.order_by(GenerationJob.created_at.desc()).limit(100).all()
+
+    return StandardResponse(data=[
+        {
+            "id": str(j.id),
+            "type": j.type.value,
+            "status": j.status.value,
+            "api_used": j.api_used,
+            "cost_cents": j.cost_cents,
+            "result": json.loads(j.result) if j.result else None,
+            "created_at": j.created_at.isoformat(),
+            "completed_at": j.completed_at.isoformat() if j.completed_at else None,
+            "product_id": str(j.product_image.product_id) if j.product_image else None,
+            "view": j.product_image.view if j.product_image else None,
+        }
+        for j in jobs
+    ])
 
 
 @router.get("/{job_id}")
