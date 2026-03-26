@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: confexai
+      POSTGRES_PASSWORD: confexai
+      POSTGRES_DB: confexai_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://confexai:confexai@db:5432/confexai_db
+      DATABASE_TEST_URL: postgresql://confexai:confexai@db:5432/confexai_test_db
+      SECRET_KEY: ${SECRET_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      KLING_ACCESS_KEY: ${KLING_ACCESS_KEY}
+      KLING_SECRET_KEY: ${KLING_SECRET_KEY}
+      UPLOAD_DIR: /app/uploads
+      MAX_IMAGE_SIZE_MB: 20
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:
