@@ -1,8 +1,12 @@
 import json
 import logging
 import os
+import io
+import zipfile
 from uuid import UUID
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -197,15 +201,63 @@ class RejectRequest(BaseModel):
     reason: str
 
 
+@router.delete("/cleanup-broken")
+def cleanup_broken_jobs(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """
+    Hard deletes jobs where:
+    - type is color_variation
+    - result is null OR jpg_url is missing OR file does not exist on disk
+    """
+    upload_dir = os.getenv("UPLOAD_DIR", "/app/examples/uploads")
+
+    jobs = db.query(GenerationJob).filter(
+        GenerationJob.type == JobType.color_variation
+    ).all()
+
+    deleted = 0
+    for job in jobs:
+        should_delete = False
+        if not job.result:
+            should_delete = True
+        else:
+            try:
+                result = json.loads(job.result)
+                jpg_url = result.get("jpg_url", "")
+                if not jpg_url:
+                    should_delete = True
+                else:
+                    file_path = jpg_url.replace("/static/uploads", upload_dir)
+                    if not Path(file_path).exists():
+                        should_delete = True
+            except Exception:
+                should_delete = True
+
+        if should_delete:
+            db.delete(job)
+            deleted += 1
+
+    db.commit()
+    return StandardResponse(data={"deleted": deleted, "message": f"{deleted} jobs corrompidos removidos."})
+
+
 @router.get("")
 def list_jobs(
     product_id: str | None = None,
     type: str | None = None,
     status: str | None = None,
+    include_archived: bool = False,
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
+    from app.models import Product
+
     query = db.query(GenerationJob)
+
+    if not include_archived:
+        query = query.filter(GenerationJob.is_archived == False)
 
     if product_id:
         query = query.join(ProductImage).filter(
@@ -216,23 +268,185 @@ def list_jobs(
     if status:
         query = query.filter(GenerationJob.status == status)
 
-    jobs = query.order_by(GenerationJob.created_at.desc()).limit(100).all()
+    jobs = query.order_by(GenerationJob.created_at.desc()).limit(200).all()
 
-    return StandardResponse(data=[
-        {
+    result = []
+    for j in jobs:
+        pid = str(j.product_image.product_id) if j.product_image else None
+        product_name = None
+        if pid:
+            prod = db.query(Product).filter(Product.id == pid).first()
+            product_name = prod.name if prod else None
+
+        result.append({
             "id": str(j.id),
             "type": j.type.value,
             "status": j.status.value,
             "api_used": j.api_used,
             "cost_cents": j.cost_cents,
+            "is_archived": j.is_archived,
             "result": json.loads(j.result) if j.result else None,
             "created_at": j.created_at.isoformat(),
             "completed_at": j.completed_at.isoformat() if j.completed_at else None,
-            "product_id": str(j.product_image.product_id) if j.product_image else None,
+            "product_id": pid,
+            "product_name": product_name,
             "view": j.product_image.view if j.product_image else None,
-        }
-        for j in jobs
-    ])
+        })
+
+    return StandardResponse(data=result)
+
+
+@router.patch("/{job_id}/archive")
+def archive_job(
+    job_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    if not job:
+        raise HTTPException(404, detail="Job nao encontrado.")
+    job.is_archived = True
+    db.commit()
+    return StandardResponse(data={"job_id": str(job_id), "is_archived": True})
+
+
+@router.patch("/{job_id}/unarchive")
+def unarchive_job(
+    job_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    if not job:
+        raise HTTPException(404, detail="Job nao encontrado.")
+    job.is_archived = False
+    db.commit()
+    return StandardResponse(data={"job_id": str(job_id), "is_archived": False})
+
+
+@router.get("/export/{product_id}")
+def export_product_zip(
+    product_id: UUID,
+    status: str = "approved",
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    from app.models import Product
+
+    jobs = (
+        db.query(GenerationJob)
+        .join(ProductImage)
+        .filter(
+            ProductImage.product_id == product_id,
+            GenerationJob.type == JobType.color_variation,
+            GenerationJob.is_archived == False,
+        )
+        .all()
+    )
+
+    if status != "all":
+        jobs = [j for j in jobs if j.status.value == status]
+
+    if not jobs:
+        raise HTTPException(404, detail="Nenhuma imagem encontrada para exportar.")
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    product_name = product.name.replace(" ", "_") if product else str(product_id)
+
+    upload_dir = os.getenv("UPLOAD_DIR", "/app/examples/uploads")
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for job in jobs:
+            if not job.result:
+                continue
+            result = json.loads(job.result)
+            jpg_url = result.get("jpg_url", "")
+            file_path = jpg_url.replace("/static/uploads", upload_dir)
+
+            if not Path(file_path).exists():
+                continue
+
+            color = result.get("color_hex", "").replace("#", "")
+            view = job.product_image.view or "sem_view"
+            short_id = str(job.id)[:6]
+            filename = f"{color}_{view}_{short_id}.jpg"
+            zf.write(file_path, filename)
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={product_name}_export.zip"}
+    )
+
+
+class BulkExportRequest(BaseModel):
+    product_ids: list[str]
+    status: str = "approved"
+
+
+@router.post("/export/bulk")
+def export_bulk_zip(
+    payload: BulkExportRequest,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    from app.models import Product
+
+    zip_buffer = io.BytesIO()
+    total_files = 0
+    upload_dir = os.getenv("UPLOAD_DIR", "/app/examples/uploads")
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for product_id in payload.product_ids:
+            product = db.query(Product).filter(Product.id == product_id).first()
+            if not product:
+                continue
+
+            folder = product.name.replace(" ", "_")[:30]
+
+            jobs = (
+                db.query(GenerationJob)
+                .join(ProductImage)
+                .filter(
+                    ProductImage.product_id == product_id,
+                    GenerationJob.type == JobType.color_variation,
+                    GenerationJob.is_archived == False,
+                )
+                .all()
+            )
+
+            if payload.status != "all":
+                jobs = [j for j in jobs if j.status.value == payload.status]
+
+            for job in jobs:
+                if not job.result:
+                    continue
+                result = json.loads(job.result)
+                jpg_url = result.get("jpg_url", "")
+                file_path = jpg_url.replace("/static/uploads", upload_dir)
+
+                if not Path(file_path).exists():
+                    continue
+
+                color = result.get("color_hex", "").replace("#", "")
+                view = job.product_image.view or "sem_view"
+                short_id = str(job.id)[:6]
+                filename = f"{folder}/{color}_{view}_{short_id}.jpg"
+                zf.write(file_path, filename)
+                total_files += 1
+
+    if total_files == 0:
+        raise HTTPException(404, detail="Nenhuma imagem encontrada para exportar.")
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=confexai_export.zip"}
+    )
 
 
 @router.get("/{job_id}")
@@ -294,6 +508,7 @@ def reject_job(
         raise HTTPException(409, detail=f"Job nao pode ser rejeitado. Status: {job.status.value}")
     job.status = JobStatus.rejected
     job.rejection_reason = payload.reason
+    job.is_archived = True  # auto-archive rejected jobs
     db.commit()
     return StandardResponse(data={
         "job_id": str(job_id),
