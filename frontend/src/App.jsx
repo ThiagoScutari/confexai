@@ -1,7 +1,36 @@
-import Home from './pages/Home'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import Produtos from "./pages/Produtos";
+import Pipeline from "./pages/Pipeline";
 
-function App() {
-  return <Home />
+function ProtectedRoute({ children }) {
+  const { isAuth } = useAuth();
+  return isAuth ? children : <Navigate to="/login" replace />;
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/produtos" replace />} />
+            <Route path="produtos" element={<Produtos />} />
+            <Route path="pipeline/:productId" element={<Pipeline />} />
+            <Route path="pipeline" element={<Produtos />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
