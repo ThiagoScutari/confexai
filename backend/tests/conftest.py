@@ -69,7 +69,11 @@ def sample_product(db):
     db.commit()
     db.refresh(product)
     yield product
-    from app.models import ProductImage
+    from app.models import ProductImage, GenerationJob
+    # Clean up jobs linked to images of this product
+    image_ids = [img.id for img in db.query(ProductImage).filter(ProductImage.product_id == product.id).all()]
+    if image_ids:
+        db.query(GenerationJob).filter(GenerationJob.product_image_id.in_(image_ids)).delete(synchronize_session=False)
     db.query(ProductImage).filter(ProductImage.product_id == product.id).delete()
     db.delete(product)
     db.commit()
@@ -99,3 +103,60 @@ def _minimal_jpg_bytes() -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     return buf.getvalue()
+
+
+@pytest.fixture
+def sample_job_pending_review(db, sample_product):
+    """Job em status pending_review para testes de aprovacao."""
+    from app.models import ProductImage, GenerationJob, JobType, JobStatus
+    image = ProductImage(
+        product_id=sample_product.id,
+        type="color_variant",
+        original_url="/tmp/test_original.png",
+        processed_url="/tmp/test_processed.png",
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    job = GenerationJob(
+        product_image_id=image.id,
+        type=JobType.color_variation,
+        status=JobStatus.pending_review,
+        api_used="gemini",
+        cost_cents=3,
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    yield job
+    db.delete(job)
+    db.delete(image)
+    db.commit()
+
+
+@pytest.fixture
+def sample_job_done(db, sample_product):
+    """Job em status done para testes de aprovacao."""
+    from app.models import ProductImage, GenerationJob, JobType, JobStatus
+    image = ProductImage(
+        product_id=sample_product.id,
+        type="original",
+        original_url="/tmp/test_original_done.png",
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    job = GenerationJob(
+        product_image_id=image.id,
+        type=JobType.background_removal,
+        status=JobStatus.done,
+        api_used="rembg",
+        cost_cents=0,
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    yield job
+    db.delete(job)
+    db.delete(image)
+    db.commit()
