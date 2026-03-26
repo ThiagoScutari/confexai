@@ -60,3 +60,36 @@ export const getJob = (jobId) => api.get(`/jobs/${jobId}`);
 export const approveJob = (jobId) => api.post(`/jobs/${jobId}/approve`);
 export const rejectJob = (jobId, reason) =>
   api.post(`/jobs/${jobId}/reject`, { reason });
+export const listJobs = (productId = null, type = null, status = null) => {
+  const params = {};
+  if (productId) params.product_id = productId;
+  if (type) params.type = type;
+  if (status) params.status = status;
+  return api.get("/jobs", { params });
+};
+
+// Polling
+export const pollJob = (jobId, onUpdate, maxAttempts = 30, intervalMs = 2000) =>
+  new Promise((resolve, reject) => {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await getJob(jobId);
+        const job = res.data.data;
+        onUpdate(job);
+        if (job.status === "done" || job.status === "pending_review" ||
+            job.status === "failed") {
+          clearInterval(interval);
+          resolve(job);
+        }
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          reject(new Error("Timeout aguardando job"));
+        }
+      } catch (err) {
+        clearInterval(interval);
+        reject(err);
+      }
+    }, intervalMs);
+  });
