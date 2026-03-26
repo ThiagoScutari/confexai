@@ -56,6 +56,7 @@ class ProductImage(Base):
     color_hex = Column(String(7), nullable=True)
     background_type = Column(String(50), nullable=True)
     platform_target = Column(String(30), nullable=True)
+    view = Column(String(30), nullable=True)  # frente | costas | lat_direita | lat_esquerda | null
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
