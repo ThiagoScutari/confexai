@@ -20,7 +20,8 @@ export default function Resultados() {
 
   const [jobsByProduct, setJobsByProduct] = useState({});
   const [expanded, setExpanded] = useState({});
-  const [selected, setSelected] = useState(new Set());
+  const [selected, setSelected] = useState(new Set());       // product IDs
+  const [selectedImages, setSelectedImages] = useState(new Set()); // individual job IDs
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -175,6 +176,36 @@ export default function Resultados() {
     });
   };
 
+  const toggleImage = (jobId) => {
+    setSelectedImages((prev) => {
+      const next = new Set(prev);
+      next.has(jobId) ? next.delete(jobId) : next.add(jobId);
+      return next;
+    });
+  };
+
+  const downloadSelectedImages = () => {
+    if (selectedImages.size === 0) return;
+    let delay = 0;
+    for (const jobId of selectedImages) {
+      for (const { jobs } of Object.values(jobsByProduct)) {
+        const job = jobs.find(j => j.id === jobId);
+        if (job?.result?.jpg_url) {
+          setTimeout(() => {
+            const a = document.createElement("a");
+            a.href = `${API_BASE}${job.result.jpg_url}`;
+            const color = (job.result.color_hex || "").replace("#", "");
+            a.download = `${color}_${job.view || "img"}_${job.id.slice(0, 6)}.jpg`;
+            a.click();
+          }, delay);
+          delay += 300;
+          break;
+        }
+      }
+    }
+    setSelectedImages(new Set());
+  };
+
   const productList = Object.values(jobsByProduct);
   const totalJobs = productList.reduce((sum, p) => sum + p.jobs.length, 0);
 
@@ -208,6 +239,16 @@ export default function Resultados() {
             >
               <Download size={14} />
               Baixar selecao ({selected.size})
+            </button>
+          )}
+
+          {selectedImages.size > 0 && (
+            <button
+              onClick={downloadSelectedImages}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-colors"
+            >
+              <Download size={14} />
+              Baixar {selectedImages.size} {selectedImages.size === 1 ? "imagem" : "imagens"}
             </button>
           )}
 
@@ -328,10 +369,13 @@ export default function Resultados() {
                           const shortId = job.id.slice(0, 6);
                           const filename = `${colorName}_${job.view || "img"}_${shortId}.jpg`;
 
+                          const isJobSelected = selectedImages.has(job.id);
+
                           return (
                             <div
                               key={job.id}
-                              className={`bg-surface-700 border rounded-lg overflow-hidden transition-all ${
+                              className={`bg-surface-700 border-2 rounded-lg overflow-hidden transition-all ${
+                                isJobSelected ? "ring-2 ring-amber-500" :
                                 job.status === "approved" ? "border-emerald-500/30" :
                                 job.status === "rejected" ? "border-red-500/20 opacity-40" :
                                 "border-surface-600"
@@ -343,7 +387,18 @@ export default function Resultados() {
                                 ) : (
                                   <div className="w-full h-full" style={{ backgroundColor: colorHex }} />
                                 )}
-                                <div className="absolute top-1.5 left-1.5 flex gap-1">
+                                {/* Selection checkbox */}
+                                <div
+                                  onClick={() => toggleImage(job.id)}
+                                  className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer z-10 transition-all ${
+                                    isJobSelected
+                                      ? "bg-amber-500 border-amber-500"
+                                      : "bg-black/40 border-white/40 hover:border-amber-400"
+                                  }`}
+                                >
+                                  {isJobSelected && <Check size={11} className="text-surface-950" />}
+                                </div>
+                                <div className="absolute top-1.5 left-8 flex gap-1">
                                   {viewLabel && (
                                     <span className="text-xs bg-black/60 text-white px-1.5 py-0.5 rounded font-mono">
                                       {viewLabel}
