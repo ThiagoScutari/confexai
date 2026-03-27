@@ -338,7 +338,7 @@ def get_history(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    from app.models import Product
+    from app.models import Product, ProductImage
 
     query = db.query(GenerationJob).order_by(GenerationJob.created_at.desc())
 
@@ -349,14 +349,22 @@ def get_history(
 
     jobs = query.limit(limit).all()
 
+    # Prefetch todos os produtos em UMA query
+    product_ids = set()
+    for j in jobs:
+        if j.product_image:
+            product_ids.add(j.product_image.product_id)
+
+    products_map = {}
+    if product_ids:
+        prods = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        products_map = {str(p.id): p.name for p in prods}
+
+    # Montar response sem queries adicionais
     result = []
     for j in jobs:
         pid = str(j.product_image.product_id) if j.product_image else None
-        product_name = None
-        if pid:
-            prod = db.query(Product).filter(Product.id == pid).first()
-            product_name = prod.name if prod else None
-
+        product_name = products_map.get(pid) if pid else None
         job_result = json.loads(j.result) if j.result else {}
 
         result.append({
