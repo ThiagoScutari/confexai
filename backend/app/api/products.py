@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Literal
@@ -27,7 +27,7 @@ def _check_seo_rate_limit(user_key: str, product_id: str) -> None:
     nos últimos SEO_RATE_LIMIT_SECONDS segundos.
     """
     key = f"{user_key}:{product_id}"
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     last = _seo_rate_limit.get(key)
     if last and (now - last).total_seconds() < SEO_RATE_LIMIT_SECONDS:
         remaining = SEO_RATE_LIMIT_SECONDS - int((now - last).total_seconds())
@@ -42,9 +42,13 @@ PlatformType = Literal["mercadolivre", "shopee", "shopify"]
 
 
 class SEOGenerateRequest(BaseModel):
-    platforms: list[PlatformType] = ["mercadolivre", "shopee", "shopify"]
+    platforms: list[PlatformType] = ["mercadolivre"]  # S14: default ML-only
     colors: list[str] = []
     image_id: str | None = None
+    fabric: str | None = None
+    gender_target: str | None = None
+    sizing_info: str | None = None
+    additional_notes: str | None = None
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
 
@@ -169,6 +173,15 @@ def generate_seo(
         analysis_duration = int(time.time() * 1000) - start
         total_tokens += analysis_tokens
 
+        operator_context = {
+            k: v for k, v in {
+                "fabric": payload.fabric,
+                "gender_target": payload.gender_target,
+                "sizing_info": payload.sizing_info,
+                "additional_notes": payload.additional_notes,
+            }.items() if v is not None
+        }
+
         for platform in payload.platforms:
             try:
                 plat_start = int(time.time() * 1000)
@@ -176,6 +189,7 @@ def generate_seo(
                     garment_analysis=garment_analysis,
                     colors=payload.colors,
                     platform=platform,
+                    operator_context=operator_context,
                 )
                 duration = int(time.time() * 1000) - plat_start
                 total_tokens += tokens
@@ -202,7 +216,7 @@ def generate_seo(
                     existing.description = description
                     existing.tags = json.dumps(tags, ensure_ascii=False)
                     existing.is_approved = False
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(timezone.utc)
                 else:
                     seo = SEODescription(
                         product_id=product_id,

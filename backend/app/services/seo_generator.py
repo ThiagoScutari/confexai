@@ -168,6 +168,7 @@ class SEOGeneratorService:
         garment_analysis: dict,
         colors: list[str],
         platform: str,
+        operator_context: dict | None = None,
     ) -> tuple[dict, int, list[str]]:
         """
         Gera descrição SEO para uma plataforma específica.
@@ -176,10 +177,24 @@ class SEOGeneratorService:
         if platform not in PLATFORM_PROMPTS:
             raise ValueError(f"Plataforma inválida: {platform}. Use: {list(PLATFORM_PROMPTS.keys())}")
 
+        context_block = ""
+        if operator_context:
+            lines = []
+            if operator_context.get("fabric"):
+                lines.append(f"Tecido/Composição informado pelo operador: {operator_context['fabric']}")
+            if operator_context.get("gender_target"):
+                lines.append(f"Público-alvo: {operator_context['gender_target']}")
+            if operator_context.get("sizing_info"):
+                lines.append(f"Grade de tamanhos: {operator_context['sizing_info']}")
+            if operator_context.get("additional_notes"):
+                lines.append(f"Observações do operador: {operator_context['additional_notes']}")
+            if lines:
+                context_block = "\n\nOPERATOR CONTEXT (use this to improve accuracy — trust operator over AI analysis):\n" + "\n".join(lines)
+
         prompt = PLATFORM_PROMPTS[platform].format(
             garment_analysis_json=json.dumps(garment_analysis, ensure_ascii=False),
             colors_list=", ".join(colors) if colors else "não informado",
-        )
+        ) + context_block
 
         response = self.client.messages.create(
             model=self.model,
