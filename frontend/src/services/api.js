@@ -60,13 +60,23 @@ export const getJob = (jobId) => api.get(`/jobs/${jobId}`);
 export const approveJob = (jobId) => api.post(`/jobs/${jobId}/approve`);
 export const rejectJob = (jobId, reason) =>
   api.post(`/jobs/${jobId}/reject`, { reason });
-export const listJobs = (productId = null, type = null, status = null) => {
+export const listJobs = (productId = null, type = null, status = null, includeArchived = false) => {
   const params = {};
   if (productId) params.product_id = productId;
   if (type) params.type = type;
   if (status) params.status = status;
+  if (includeArchived) params.include_archived = true;
   return api.get("/jobs", { params });
 };
+export const getHistory = (productId = null, limit = 50) => {
+  const params = { limit };
+  if (productId) params.product_id = productId;
+  return api.get("/jobs/history", { params });
+};
+export const archiveJob = (jobId) =>
+  api.patch(`/jobs/${jobId}/archive`);
+export const unarchiveJob = (jobId) =>
+  api.patch(`/jobs/${jobId}/unarchive`);
 
 // Polling
 export const pollJob = (jobId, onUpdate, maxAttempts = 30, intervalMs = 2000) =>
