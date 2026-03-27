@@ -1,0 +1,191 @@
+{
+  "$schema": "https://confexai.local/design-tokens/v1",
+  "meta": {
+    "project": "ConfexAI",
+    "theme": "Industrial Refinado",
+    "version": "1.0",
+    "sprint": 14,
+    "description": "Paleta escura com acentos âmbar. Inspira confiança técnica — Figma, Linear, Vercel."
+  },
+
+  "colors": {
+    "surface": {
+      "950": { "value": "#0a0a0b", "usage": "Background principal da aplicação" },
+      "900": { "value": "#111113", "usage": "Sidebar, painéis laterais" },
+      "800": { "value": "#1a1a1f", "usage": "Cards, containers de conteúdo" },
+      "700": { "value": "#242429", "usage": "Inputs, áreas interativas" },
+      "600": { "value": "#2e2e35", "usage": "Bordas, divisores" }
+    },
+    "amber": {
+      "400": { "value": "#fbbf24", "usage": "Texto de destaque, ícones ativos, logo" },
+      "500": { "value": "#f59e0b", "usage": "Botões primários (background)" },
+      "600": { "value": "#d97706", "usage": "Hover de botões primários" }
+    },
+    "neutral": {
+      "100": { "value": "#f5f5f4", "usage": "Texto primário em dark theme" },
+      "200": { "value": "#e7e5e4", "usage": "Texto secundário forte" },
+      "400": { "value": "#a8a29e", "usage": "Texto de suporte" },
+      "500": { "value": "#78716c", "usage": "Labels, metadata" },
+      "600": { "value": "#57534e", "usage": "Placeholders, ícones inativos" }
+    },
+    "semantic": {
+      "success": { "value": "#10b981", "usage": "Aprovado, sucesso, emerald-500" },
+      "success-subtle": { "value": "#064e3b", "usage": "Background de badges aprovados" },
+      "error": { "value": "#f87171", "usage": "Rejeitado, erro, red-400" },
+      "error-subtle": { "value": "#450a0a", "usage": "Background de badges de erro" },
+      "warning": { "value": "#fbbf24", "usage": "Pendente revisão, amber-400" },
+      "warning-subtle": { "value": "#451a03", "usage": "Background de badges de aviso" },
+      "info": { "value": "#60a5fa", "usage": "Informação, blue-400" }
+    }
+  },
+
+  "typography": {
+    "fonts": {
+      "display": {
+        "family": "DM Serif Display",
+        "fallback": "serif",
+        "google_url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap",
+        "usage": "Títulos de página (h1), logo, headings de seção"
+      },
+      "body": {
+        "family": "DM Sans",
+        "fallback": "sans-serif",
+        "google_url": "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap",
+        "usage": "Todo o corpo de texto, labels, botões"
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "fallback": "monospace",
+        "google_url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap",
+        "usage": "Códigos HEX, IDs, timestamps, badges técnicos, prompts"
+      }
+    },
+    "scale": {
+      "xs": { "value": "0.75rem", "lineHeight": "1rem" },
+      "sm": { "value": "0.875rem", "lineHeight": "1.25rem" },
+      "base": { "value": "1rem", "lineHeight": "1.5rem" },
+      "lg": { "value": "1.125rem", "lineHeight": "1.75rem" },
+      "xl": { "value": "1.25rem", "lineHeight": "1.75rem" },
+      "2xl": { "value": "1.5rem", "lineHeight": "2rem" },
+      "display": { "value": "1.875rem", "lineHeight": "2.25rem", "font": "DM Serif Display" }
+    }
+  },
+
+  "spacing": {
+    "sidebar-width": { "value": "14rem", "px": 224 },
+    "card-padding": { "value": "1.25rem", "px": 20 },
+    "section-gap": { "value": "2rem", "px": 32 },
+    "page-padding": { "value": "2rem", "px": 32 }
+  },
+
+  "borders": {
+    "radius": {
+      "sm": "0.25rem",
+      "md": "0.5rem",
+      "lg": "0.75rem",
+      "xl": "1rem"
+    },
+    "width": {
+      "default": "1px",
+      "focus": "2px"
+    }
+  },
+
+  "components": {
+    "button-primary": {
+      "background": "$colors.amber.500",
+      "background-hover": "$colors.amber.400",
+      "text": "$colors.surface.950",
+      "font-weight": "500",
+      "border-radius": "$borders.radius.md",
+      "padding": "0.5rem 1rem"
+    },
+    "button-secondary": {
+      "background": "$colors.surface.700",
+      "background-hover": "$colors.surface.600",
+      "text": "$colors.neutral.300",
+      "border": "1px solid $colors.surface.600",
+      "border-radius": "$borders.radius.md",
+      "padding": "0.5rem 1rem"
+    },
+    "card": {
+      "background": "$colors.surface.800",
+      "border": "1px solid $colors.surface.600",
+      "border-radius": "$borders.radius.xl",
+      "padding": "$spacing.card-padding"
+    },
+    "input": {
+      "background": "$colors.surface.700",
+      "border": "1px solid $colors.surface.600",
+      "border-focus": "1px solid $colors.amber.500",
+      "text": "$colors.neutral.100",
+      "placeholder": "$colors.neutral.600",
+      "border-radius": "$borders.radius.md",
+      "padding": "0.5rem 0.75rem"
+    },
+    "badge-approved": {
+      "text": "$colors.semantic.success",
+      "background": "rgba(16,185,129,0.1)"
+    },
+    "badge-rejected": {
+      "text": "$colors.semantic.error",
+      "background": "rgba(248,113,113,0.1)"
+    },
+    "badge-pending": {
+      "text": "$colors.semantic.warning",
+      "background": "rgba(251,191,36,0.1)"
+    },
+    "sidebar": {
+      "background": "$colors.surface.900",
+      "border-right": "1px solid $colors.surface.700",
+      "width": "$spacing.sidebar-width",
+      "nav-item-active": {
+        "background": "rgba(245,158,11,0.1)",
+        "text": "$colors.amber.400"
+      },
+      "nav-item-hover": {
+        "background": "$colors.surface.700",
+        "text": "$colors.neutral.100"
+      }
+    }
+  },
+
+  "tailwind_config": {
+    "note": "Copiar para frontend/tailwind.config.js → theme.extend",
+    "colors": {
+      "surface": {
+        "950": "#0a0a0b",
+        "900": "#111113",
+        "800": "#1a1a1f",
+        "700": "#242429",
+        "600": "#2e2e35"
+      },
+      "amber": {
+        "400": "#fbbf24",
+        "500": "#f59e0b",
+        "600": "#d97706"
+      },
+      "neutral": {
+        "100": "#f5f5f4",
+        "200": "#e7e5e4",
+        "400": "#a8a29e",
+        "500": "#78716c",
+        "600": "#57534e"
+      }
+    },
+    "fontFamily": {
+      "display": ["'DM Serif Display'", "serif"],
+      "body": ["'DM Sans'", "sans-serif"],
+      "mono": ["'JetBrains Mono'", "monospace"]
+    }
+  },
+
+  "do_not": [
+    "Usar Inter, Roboto ou fontes system-ui — quebra identidade visual",
+    "Usar purple gradients em backgrounds — clichê de IA genérica",
+    "Usar fundo branco — o tema é escuro por design",
+    "Misturar border-radius inconsistentes no mesmo componente",
+    "Usar emojis em interfaces profissionais (exceto SEO Shopee por requisito de plataforma)",
+    "Usar cores fora da paleta definida sem documentar a exceção"
+  ]
+}
