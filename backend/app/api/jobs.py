@@ -19,6 +19,19 @@ from app.services.url_helper import path_to_url
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 
+
+def _prefetch_product_names(db, jobs: list) -> dict:
+    """Busca nomes de produtos em UMA query. Evita N+1."""
+    product_ids = set()
+    for j in jobs:
+        if j.product_image:
+            product_ids.add(j.product_image.product_id)
+    if not product_ids:
+        return {}
+    from app.models import Product
+    prods = db.query(Product).filter(Product.id.in_(product_ids)).all()
+    return {str(p.id): p.name for p in prods}
+
 ANTHROPIC_COST_PER_1K_TOKENS_CENTS = 3  # ~$0.03 por 1K tokens de input, ~R$0.18
 
 
@@ -287,8 +300,6 @@ def list_jobs(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    from app.models import Product
-
     query = db.query(GenerationJob)
 
     if not include_archived:
@@ -305,13 +316,12 @@ def list_jobs(
 
     jobs = query.order_by(GenerationJob.created_at.desc()).limit(200).all()
 
+    products_map = _prefetch_product_names(db, jobs)
+
     result = []
     for j in jobs:
         pid = str(j.product_image.product_id) if j.product_image else None
-        product_name = None
-        if pid:
-            prod = db.query(Product).filter(Product.id == pid).first()
-            product_name = prod.name if prod else None
+        product_name = products_map.get(pid) if pid else None
 
         result.append({
             "id": str(j.id),
@@ -349,16 +359,7 @@ def get_history(
 
     jobs = query.limit(limit).all()
 
-    # Prefetch todos os produtos em UMA query
-    product_ids = set()
-    for j in jobs:
-        if j.product_image:
-            product_ids.add(j.product_image.product_id)
-
-    products_map = {}
-    if product_ids:
-        prods = db.query(Product).filter(Product.id.in_(product_ids)).all()
-        products_map = {str(p.id): p.name for p in prods}
+    products_map = _prefetch_product_names(db, jobs)
 
     # Montar response sem queries adicionais
     result = []
