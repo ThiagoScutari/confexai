@@ -23,6 +23,7 @@ env/
 
 # Uploads
 backend/uploads/
+examples/uploads/
 
 # Node
 node_modules/
