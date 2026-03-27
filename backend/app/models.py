@@ -116,5 +116,6 @@ class SEODescription(Base):
     tags = Column(Text, nullable=True)             # JSON array stringificado
     is_approved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
 
     product = relationship("Product", back_populates="seo_descriptions")
