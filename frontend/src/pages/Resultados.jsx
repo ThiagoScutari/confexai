@@ -14,6 +14,20 @@ const VIEW_LABELS = {
   lat_direita: "Lat. D", lat_esquerda: "Lat. E"
 };
 
+const COLOR_NAMES = {
+  "#696980": "Grafite",
+  "#978b7b": "Areia",
+  "#9e987d": "Musgo",
+  "#ffffff": "Branco",
+  "#000000": "Preto",
+  "#ff0000": "Vermelho",
+  "#0000ff": "Azul",
+  "#008000": "Verde",
+};
+
+const getColorName = (hex) =>
+  COLOR_NAMES[hex?.toLowerCase()] ?? null;
+
 const buildFilename = (job) => {
   const color = (job.result?.color_hex || "#000").replace("#", "").toLowerCase();
   const view = job.view || "img";
@@ -32,12 +46,22 @@ export default function Resultados() {
   const [selectedImages, setSelectedImages] = useState(new Set()); // individual job IDs
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  const [seoReadyProductIds, setSeoReadyProductIds] = useState(new Set());
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await listJobs(null, "color_variation", null, showArchived);
+      const [res, seoRes] = await Promise.all([
+        listJobs(null, "color_variation", null, showArchived),
+        listJobs(null, "seo_description", "done").catch(() => ({ data: { data: [] } })),
+      ]);
       const jobs = res.data.data;
+
+      // Build SEO-ready product IDs set
+      const seoIds = new Set(
+        (seoRes?.data?.data ?? []).map((j) => j.product_id).filter(Boolean)
+      );
+      setSeoReadyProductIds(seoIds);
 
       const grouped = {};
       for (const job of jobs) {
@@ -213,6 +237,20 @@ export default function Resultados() {
     setSelectedImages(new Set());
   };
 
+  const selectAllInProduct = (productId) => {
+    const jobIds = (jobsByProduct[productId]?.jobs ?? []).map((j) => j.id);
+    setSelectedImages((prev) => {
+      const next = new Set(prev);
+      const allSelected = jobIds.every((id) => next.has(id));
+      if (allSelected) {
+        jobIds.forEach((id) => next.delete(id));
+      } else {
+        jobIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
   const productList = Object.values(jobsByProduct);
   const totalJobs = productList.reduce((sum, p) => sum + p.jobs.length, 0);
 
@@ -345,6 +383,12 @@ export default function Resultados() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     <button
+                      onClick={() => selectAllInProduct(productId)}
+                      className="text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+                    >
+                      selecionar grupo
+                    </button>
+                    <button
                       onClick={() => downloadProduct(productId)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-md text-xs transition-colors"
                     >
@@ -410,6 +454,11 @@ export default function Resultados() {
                                     </span>
                                   )}
                                 </div>
+                                {seoReadyProductIds.has(job.product_id) && (
+                                  <span className="absolute top-1.5 right-8 bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[9px] font-mono px-1.5 py-0.5 rounded">
+                                    SEO
+                                  </span>
+                                )}
                                 {fullUrl && (
                                   <button
                                     onClick={() => downloadImage(jpgUrl, filename)}
@@ -440,18 +489,27 @@ export default function Resultados() {
                               </div>
 
                               <div className="p-2">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-xs font-mono text-neutral-400">{colorHex}</span>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="w-2.5 h-2.5 rounded-full shrink-0 border border-surface-500" style={{ backgroundColor: colorHex }} />
+                                    <span className="text-xs font-mono text-neutral-400 truncate">{colorHex}</span>
+                                    {getColorName(colorHex) && (
+                                      <span className="text-xs text-neutral-500">· {getColorName(colorHex)}</span>
+                                    )}
+                                  </div>
                                   {fullUrl && (
                                     <button
                                       onClick={() => downloadImage(jpgUrl, filename)}
-                                      className="text-neutral-600 hover:text-amber-400 transition-colors"
+                                      className="text-neutral-600 hover:text-amber-400 transition-colors shrink-0"
                                       title="Baixar"
                                     >
                                       <Download size={11} />
                                     </button>
                                   )}
                                 </div>
+                                <span className="text-[10px] font-mono text-neutral-600">
+                                  ID {job.id.slice(0, 8)}
+                                </span>
 
                                 {job.status === "pending_review" && (
                                   <div className="flex gap-1">
