@@ -14,6 +14,7 @@ from app.database import get_db
 from app.auth import get_current_user
 from app.models import GenerationJob, JobType, JobStatus, ProductImage
 from app.schemas.common import StandardResponse
+from app.services.url_helper import path_to_url
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
@@ -74,6 +75,22 @@ def detect_protected_regions(
         job.cost_cents = round(cost)
         job.result = json.dumps(result, ensure_ascii=False)
         job.completed_at = datetime.utcnow()
+        job.prompt_used = result.get("prompt_used")
+        job.model_used = result.get("model_used")
+        job.duration_ms = result.get("duration_ms")
+        job.input_image_url = path_to_url(image_path)
+
+        api_log_data = result.get("api_log")
+        if api_log_data:
+            from app.models import JobApiLog
+            api_log = JobApiLog(
+                job_id=job.id,
+                request_payload=api_log_data.get("request_payload"),
+                response_payload=api_log_data.get("response_payload"),
+                http_status=api_log_data.get("http_status", 200),
+            )
+            db.add(api_log)
+
         db.commit()
 
         return StandardResponse(data={
@@ -165,7 +182,25 @@ def create_color_variation(
             job.cost_cents = result["cost_cents"]
             job.result = json.dumps(result, ensure_ascii=False)
             job.completed_at = datetime.utcnow()
+            job.prompt_used = result.get("prompt_used")
+            job.model_used = result.get("model_used")
+            job.duration_ms = result.get("duration_ms")
+            job.input_image_url = path_to_url(image_path)
+            if method == "pillow_fallback":
+                job.fallback_reason = "Gemini retornou erro — usado fallback Pillow"
             total_cost += result["cost_cents"]
+
+            api_log_data = result.get("api_log")
+            if api_log_data:
+                from app.models import JobApiLog
+                api_log = JobApiLog(
+                    job_id=job.id,
+                    request_payload=api_log_data.get("request_payload"),
+                    response_payload=api_log_data.get("response_payload"),
+                    http_status=api_log_data.get("http_status", 200),
+                )
+                db.add(api_log)
+
             db.commit()
 
             results.append({
@@ -291,6 +326,63 @@ def list_jobs(
             "product_id": pid,
             "product_name": product_name,
             "view": j.product_image.view if j.product_image else None,
+        })
+
+    return StandardResponse(data=result)
+
+
+@router.get("/history")
+def get_history(
+    product_id: str | None = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    from app.models import Product
+
+    query = db.query(GenerationJob).order_by(GenerationJob.created_at.desc())
+
+    if product_id:
+        query = query.join(ProductImage).filter(
+            ProductImage.product_id == product_id
+        )
+
+    jobs = query.limit(limit).all()
+
+    result = []
+    for j in jobs:
+        pid = str(j.product_image.product_id) if j.product_image else None
+        product_name = None
+        if pid:
+            prod = db.query(Product).filter(Product.id == pid).first()
+            product_name = prod.name if prod else None
+
+        job_result = json.loads(j.result) if j.result else {}
+
+        result.append({
+            "id": str(j.id),
+            "product_id": pid,
+            "product_name": product_name,
+            "view": j.product_image.view if j.product_image else None,
+            "type": j.type.value,
+            "status": j.status.value,
+            "is_archived": j.is_archived,
+            "api_used": j.api_used,
+            "model_used": j.model_used,
+            "prompt_used": j.prompt_used,
+            "input_image_url": j.input_image_url,
+            "output_jpg_url": job_result.get("jpg_url"),
+            "output_png_url": job_result.get("png_url"),
+            "color_hex": job_result.get("color_hex"),
+            "cost_cents": j.cost_cents,
+            "cost_brl": round((j.cost_cents or 0) * 0.006, 4),
+            "tokens_used": j.tokens_used,
+            "duration_ms": j.duration_ms,
+            "error_message": j.error_message,
+            "fallback_reason": j.fallback_reason,
+            "method": job_result.get("method"),
+            "created_at": j.created_at.isoformat(),
+            "completed_at": j.completed_at.isoformat() if j.completed_at else None,
         })
 
     return StandardResponse(data=result)
