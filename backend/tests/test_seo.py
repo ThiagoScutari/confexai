@@ -152,3 +152,24 @@ def test_gerar_seo_substitui_descricao_existente(
         SEODescription.platform == "shopee",
     ).count()
     assert count == 1  # não deve duplicar
+
+
+def test_gerar_seo_plataforma_invalida_retorna_422(client, auth_headers, sample_product):
+    response = client.post(
+        f"/api/v1/products/{sample_product.id}/seo",
+        json={"platforms": ["instagram"]},
+        headers=auth_headers,
+    )
+    assert response.status_code == 422
+
+
+def test_gerar_seo_plataformas_vazias_retorna_202_sem_resultados(client, auth_headers, sample_product, sample_image_uploaded):
+    with patch("app.api.products.SEOGeneratorService") as MockSvc:
+        MockSvc.return_value = _mock_seo_service()
+        response = client.post(
+            f"/api/v1/products/{sample_product.id}/seo",
+            json={"platforms": [], "colors": []},
+            headers=auth_headers,
+        )
+    assert response.status_code == 202
+    assert len(response.json()["data"]["results"]) == 0

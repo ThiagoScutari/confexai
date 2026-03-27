@@ -3,6 +3,7 @@ import logging
 import time
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -15,8 +16,11 @@ from app.services.seo_generator import SEOGeneratorService
 logger = logging.getLogger(__name__)
 
 
+PlatformType = Literal["mercadolivre", "shopee", "shopify"]
+
+
 class SEOGenerateRequest(BaseModel):
-    platforms: list[str] = ["mercadolivre", "shopee", "shopify"]
+    platforms: list[PlatformType] = ["mercadolivre", "shopee", "shopify"]
     colors: list[str] = []
     image_id: str | None = None
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
