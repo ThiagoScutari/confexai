@@ -16,7 +16,7 @@ def clear_rate_limit():
 def _mock_seo():
     mock = MagicMock()
     mock.analyze_garment.return_value = ({"garment_type": "blusa"}, 100)
-    mock.generate_for_platform.return_value = (
+    mock.generate_for_platform.side_effect = lambda garment_analysis, colors, platform, operator_context=None: (
         {
             "title": "Blusa Teste",
             "description": "Descrição teste",

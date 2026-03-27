@@ -45,7 +45,7 @@ MOCK_SHOPIFY_RESULT = {
 def _mock_seo_service():
     mock = MagicMock()
     mock.analyze_garment.return_value = (MOCK_ANALYSIS, 500)
-    mock.generate_for_platform.side_effect = lambda garment_analysis, colors, platform: {
+    mock.generate_for_platform.side_effect = lambda garment_analysis, colors, platform, operator_context=None: {
         "mercadolivre": (MOCK_ML_RESULT, 300, []),
         "shopee": (MOCK_SHOPEE_RESULT, 400, []),
         "shopify": (MOCK_SHOPIFY_RESULT, 350, []),
@@ -173,3 +173,48 @@ def test_gerar_seo_plataformas_vazias_retorna_202_sem_resultados(client, auth_he
         )
     assert response.status_code == 202
     assert len(response.json()["data"]["results"]) == 0
+
+
+def test_seo_with_operator_context_sends_fields_to_service(
+    client, auth_headers, sample_product, sample_image_uploaded
+):
+    """SEO aceita campos de contexto do operador e os repassa ao service."""
+    with patch("app.api.products.SEOGeneratorService") as MockSvc:
+        mock_svc = _mock_seo_service()
+        MockSvc.return_value = mock_svc
+        response = client.post(
+            f"/api/v1/products/{sample_product.id}/seo",
+            json={
+                "platforms": ["mercadolivre"],
+                "fabric": "algodão",
+                "gender_target": "feminino",
+                "sizing_info": "P ao GG",
+                "additional_notes": "tem forro",
+            },
+            headers=auth_headers,
+        )
+    assert response.status_code == 202
+    call_kwargs = mock_svc.generate_for_platform.call_args
+    ctx = call_kwargs.kwargs.get("operator_context") or call_kwargs[1].get("operator_context")
+    assert ctx["fabric"] == "algodão"
+    assert ctx["gender_target"] == "feminino"
+    assert ctx["sizing_info"] == "P ao GG"
+    assert ctx["additional_notes"] == "tem forro"
+
+
+def test_seo_operator_context_all_none_still_works(
+    client, auth_headers, sample_product, sample_image_uploaded
+):
+    """Campos de contexto são opcionais — payload mínimo funciona com contexto vazio."""
+    with patch("app.api.products.SEOGeneratorService") as MockSvc:
+        mock_svc = _mock_seo_service()
+        MockSvc.return_value = mock_svc
+        response = client.post(
+            f"/api/v1/products/{sample_product.id}/seo",
+            json={"platforms": ["mercadolivre"]},
+            headers=auth_headers,
+        )
+    assert response.status_code == 202
+    call_kwargs = mock_svc.generate_for_platform.call_args
+    ctx = call_kwargs.kwargs.get("operator_context") or call_kwargs[1].get("operator_context")
+    assert ctx == {}
