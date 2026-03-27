@@ -69,10 +69,11 @@ async def upload_image(
     except Exception:
         raise HTTPException(422, detail="Arquivo de imagem invalido ou corrompido.")
 
-    # Salvar arquivo
+    # Salvar arquivo com nome único por view
     product_dir = UPLOAD_DIR / str(product_id)
     product_dir.mkdir(parents=True, exist_ok=True)
-    file_path = product_dir / f"original{Path(file.filename).suffix}"
+    view_suffix = f"_{view}" if view else ""
+    file_path = product_dir / f"original{view_suffix}{Path(file.filename).suffix}"
     file_path.write_bytes(content)
 
     # Registrar no banco
