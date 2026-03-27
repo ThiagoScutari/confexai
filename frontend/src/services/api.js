@@ -103,3 +103,13 @@ export const pollJob = (jobId, onUpdate, maxAttempts = 30, intervalMs = 2000) =>
       }
     }, intervalMs);
   });
+
+// SEO
+export const generateSEO = (productId, platforms, colors, imageId = null) =>
+  api.post(`/products/${productId}/seo`, {
+    platforms,
+    colors,
+    image_id: imageId,
+  });
+export const getSEO = (productId) =>
+  api.get(`/products/${productId}/seo`);
