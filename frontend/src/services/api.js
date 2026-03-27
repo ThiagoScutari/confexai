@@ -105,11 +105,7 @@ export const pollJob = (jobId, onUpdate, maxAttempts = 30, intervalMs = 2000) =>
   });
 
 // SEO
-export const generateSEO = (productId, platforms, colors, imageId = null) =>
-  api.post(`/products/${productId}/seo`, {
-    platforms,
-    colors,
-    image_id: imageId,
-  });
+export const generateSEO = (productId, payload) =>
+  api.post(`/products/${productId}/seo`, payload);
 export const getSEO = (productId) =>
   api.get(`/products/${productId}/seo`);
