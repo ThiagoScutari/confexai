@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Produtos from "./pages/Produtos";
 import Pipeline from "./pages/Pipeline";
 import Resultados from "./pages/Resultados";
+import Historico from "./pages/Historico";
 
 function ProtectedRoute({ children }) {
   const { isAuth } = useAuth();
@@ -31,7 +32,9 @@ export default function App() {
               <Route path="produtos" element={<Produtos />} />
               <Route path="pipeline/:productId" element={<Pipeline />} />
               <Route path="pipeline" element={<Produtos />} />
+              <Route path="resultados" element={<Resultados />} />
               <Route path="resultados/:productId" element={<Resultados />} />
+              <Route path="historico" element={<Historico />} />
             </Route>
           </Routes>
         </BrowserRouter>

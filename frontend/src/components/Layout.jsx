@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Package, Images, LogOut, Zap } from "lucide-react";
+import { Package, Images, LogOut, Zap, ScrollText } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const navItems = [
   { to: "/produtos", icon: Package, label: "Produtos" },
-  { to: "/pipeline", icon: Zap, label: "Pipeline" },
+  { to: "/resultados", icon: Images, label: "Resultados" },
+  { to: "/historico", icon: ScrollText, label: "Histórico" },
+  { to: "/pipeline", icon: Zap, label: "Novo Pipeline" },
 ];
 
 export default function Layout() {
