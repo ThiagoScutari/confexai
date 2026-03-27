@@ -229,10 +229,9 @@ export default function SEO() {
                         {copied === `${key}-desc` ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
-                    <div
-                      className="text-sm text-neutral-300 bg-surface-700 rounded px-3 py-2 max-h-32 overflow-auto whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: desc.description }}
-                    />
+                    <div className="text-sm text-neutral-300 bg-surface-700 rounded px-3 py-2 max-h-32 overflow-auto whitespace-pre-wrap">
+                      {desc.description}
+                    </div>
                   </div>
 
                   {/* Tags */}
