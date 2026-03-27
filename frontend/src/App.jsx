@@ -36,6 +36,7 @@ export default function App() {
               <Route path="resultados" element={<Resultados />} />
               <Route path="resultados/:productId" element={<Resultados />} />
               <Route path="historico" element={<Historico />} />
+              <Route path="seo" element={<Navigate to="/produtos" replace />} />
               <Route path="seo/:productId" element={<SEO />} />
             </Route>
           </Routes>

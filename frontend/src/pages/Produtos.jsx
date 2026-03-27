@@ -157,9 +157,9 @@ export default function Produtos() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/seo/${p.id}`); }}
-                  className="px-3 py-1.5 text-xs bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-md transition-all"
                 >
-                  SEO
+                  SEO / ML
                 </button>
                 <button
                   onClick={() => navigate(`/resultados/${p.id}`)}
