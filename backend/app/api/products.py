@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Literal
@@ -14,6 +15,27 @@ from app.schemas.common import StandardResponse
 from app.services.seo_generator import SEOGeneratorService
 
 logger = logging.getLogger(__name__)
+
+# Rate limit: 1 geração SEO por produto a cada 30 segundos por usuário
+_seo_rate_limit: dict[str, datetime] = {}
+SEO_RATE_LIMIT_SECONDS = 30
+
+
+def _check_seo_rate_limit(user_key: str, product_id: str) -> None:
+    """
+    Levanta HTTPException 429 se o usuário gerou SEO para este produto
+    nos últimos SEO_RATE_LIMIT_SECONDS segundos.
+    """
+    key = f"{user_key}:{product_id}"
+    now = datetime.utcnow()
+    last = _seo_rate_limit.get(key)
+    if last and (now - last).total_seconds() < SEO_RATE_LIMIT_SECONDS:
+        remaining = SEO_RATE_LIMIT_SECONDS - int((now - last).total_seconds())
+        raise HTTPException(
+            429,
+            detail=f"Aguarde {remaining}s antes de gerar SEO novamente para este produto."
+        )
+    _seo_rate_limit[key] = now
 
 
 PlatformType = Literal["mercadolivre", "shopee", "shopify"]
@@ -91,12 +113,17 @@ def generate_seo(
     product_id: UUID,
     payload: SEOGenerateRequest,
     db: Session = Depends(get_db),
-    _user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Gera descrições SEO para o produto via Claude Vision.
     Usa a imagem de frente preferencialmente.
     """
+    _check_seo_rate_limit(
+        user_key=current_user.get("user_id", "default"),
+        product_id=str(product_id)
+    )
+
     product = db.query(Product).filter(
         Product.id == product_id, Product.is_active == True
     ).first()
@@ -175,6 +202,7 @@ def generate_seo(
                     existing.description = description
                     existing.tags = json.dumps(tags, ensure_ascii=False)
                     existing.is_approved = False
+                    existing.updated_at = datetime.utcnow()
                 else:
                     seo = SEODescription(
                         product_id=product_id,
@@ -246,6 +274,7 @@ def get_seo_descriptions(
             "tags": json.loads(d.tags) if d.tags else [],
             "is_approved": d.is_approved,
             "created_at": d.created_at.isoformat(),
+            "updated_at": d.updated_at.isoformat() if d.updated_at else d.created_at.isoformat(),
         }
         for d in descriptions
     ])
