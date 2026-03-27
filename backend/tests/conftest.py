@@ -69,7 +69,9 @@ def sample_product(db):
     db.commit()
     db.refresh(product)
     yield product
-    from app.models import ProductImage, GenerationJob
+    from app.models import ProductImage, GenerationJob, SEODescription
+    # Clean up SEO descriptions linked to this product
+    db.query(SEODescription).filter(SEODescription.product_id == product.id).delete()
     # Clean up jobs linked to images of this product
     image_ids = [img.id for img in db.query(ProductImage).filter(ProductImage.product_id == product.id).all()]
     if image_ids:
@@ -103,6 +105,41 @@ def _minimal_jpg_bytes() -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     return buf.getvalue()
+
+
+@pytest.fixture
+def sample_image_uploaded(db, sample_product):
+    """ProductImage com arquivo PNG real no disco para testes de SEO."""
+    import io
+    from PIL import Image as PILImage
+    from pathlib import Path
+
+    upload_dir = Path(os.getenv("UPLOAD_DIR", "/app/examples/uploads"))
+    product_dir = upload_dir / str(sample_product.id)
+    product_dir.mkdir(parents=True, exist_ok=True)
+    img_path = product_dir / "original_frente.png"
+
+    img = PILImage.new("RGBA", (600, 600), (150, 100, 80, 255))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    img_path.write_bytes(buf.getvalue())
+
+    from app.models import ProductImage
+    image = ProductImage(
+        product_id=sample_product.id,
+        type="original",
+        view="frente",
+        original_url=str(img_path),
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    yield image
+
+    db.delete(image)
+    db.commit()
+    if img_path.exists():
+        img_path.unlink()
 
 
 @pytest.fixture
