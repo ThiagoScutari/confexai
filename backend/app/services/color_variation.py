@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+import time
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
@@ -53,34 +54,136 @@ def apply_color_variation(
     output_path: Path,
 ) -> dict:
     """
-    Aplica variacao de cor via Gemini Imagen.
-    Retorna dict com resultado e custo.
+    Tenta Gemini primeiro. Se falhar, usa fallback Pillow.
+    Registra qual metodo foi usado no resultado.
     """
-    import google.generativeai as genai
+    try:
+        result = _apply_via_gemini(image_bytes, target_hex, protected_regions, output_path)
+        result["method"] = "gemini"
+        return result
+    except Exception as e:
+        logger.warning(f"Gemini falhou ({e}), usando fallback Pillow para {target_hex}")
+        result = _apply_via_pillow(image_bytes, target_hex, output_path)
+        result["method"] = "pillow_fallback"
+        result["cost_cents"] = 0  # fallback e gratuito
+        return result
 
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+def _apply_via_gemini(
+    image_bytes: bytes,
+    target_hex: str,
+    protected_regions: list[dict],
+    output_path: Path,
+) -> dict:
+    """Aplica variacao de cor via Gemini (google-genai SDK)."""
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
     img = Image.open(io.BytesIO(image_bytes))
     width, height = img.size
 
     prompt = COLOR_VARIATION_PROMPT.format(color_hex=target_hex)
 
-    # Preparar imagem e mascara para a API
-    image_part = {"mime_type": "image/png", "data": image_bytes}
-    mask_bytes = generate_mask((width, height), protected_regions)
+    start_ms = int(time.time() * 1000)
 
-    model = genai.GenerativeModel("gemini-2.0-flash-exp")
-
-    # Usar Gemini para edicao de imagem
-    response = model.generate_content(
-        [prompt, {"mime_type": "image/png", "data": image_bytes}],
-        generation_config={"response_mime_type": "image/png"},
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-image",
+        contents=[
+            types.Part.from_text(text=prompt),
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type="image/png",
+            ),
+        ],
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE", "TEXT"],
+        ),
     )
 
-    # Extrair bytes da imagem gerada
-    result_bytes = response.candidates[0].content.parts[0].inline_data.data
+    duration_ms = int(time.time() * 1000) - start_ms
 
-    # Salvar resultado
+    # Extrair imagem da resposta
+    result_bytes = None
+    for part in response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            result_bytes = part.inline_data.data
+            break
+
+    if result_bytes is None:
+        raise ValueError("Gemini nao retornou imagem na resposta")
+
+    # Salvar resultado e gerar JPG
+    result = _save_result(result_bytes, output_path, width, height)
+    result["prompt_used"] = prompt
+    result["model_used"] = "gemini-2.5-flash-image"
+    result["duration_ms"] = duration_ms
+    result["api_log"] = {
+        "request_payload": json.dumps({
+            "model": "gemini-2.5-flash-image",
+            "prompt": prompt,
+            "image_size_bytes": len(image_bytes),
+            "response_modalities": ["IMAGE", "TEXT"],
+        }),
+        "response_payload": json.dumps({
+            "candidates_count": len(response.candidates),
+            "has_image": result_bytes is not None,
+            "duration_ms": duration_ms,
+        }),
+        "http_status": 200,
+    }
+    return result
+
+
+def _apply_via_pillow(
+    image_bytes: bytes,
+    target_hex: str,
+    output_path: Path,
+) -> dict:
+    """
+    Fallback deterministico: aplica tint de cor via multiplicacao de canal.
+    Resultado menos realista mas funcional para MVP.
+    """
+    start_ms = int(time.time() * 1000)
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    width, height = img.size
+
+    r = int(target_hex[1:3], 16) / 255
+    g = int(target_hex[3:5], 16) / 255
+    b = int(target_hex[5:7], 16) / 255
+
+    img_array = np.array(img).astype(float)
+    # Preservar canal alpha
+    alpha = img_array[:, :, 3]
+    # Converter para escala de cinza (luminancia)
+    gray = 0.299 * img_array[:, :, 0] + 0.587 * img_array[:, :, 1] + 0.114 * img_array[:, :, 2]
+    # Aplicar cor alvo mantendo luminancia
+    img_array[:, :, 0] = np.clip(gray * r * 2, 0, 255)
+    img_array[:, :, 1] = np.clip(gray * g * 2, 0, 255)
+    img_array[:, :, 2] = np.clip(gray * b * 2, 0, 255)
+    img_array[:, :, 3] = alpha
+
+    result_img = Image.fromarray(img_array.astype(np.uint8))
+
+    # Salvar PNG
+    buf = io.BytesIO()
+    result_img.save(buf, format="PNG")
+    result_bytes = buf.getvalue()
+
+    duration_ms = int(time.time() * 1000) - start_ms
+    result = _save_result(result_bytes, output_path, width, height)
+    result["prompt_used"] = f"Pillow color tint: {target_hex}"
+    result["model_used"] = "pillow_fallback"
+    result["duration_ms"] = duration_ms
+    result["api_log"] = None
+    return result
+
+
+def _save_result(result_bytes: bytes, output_path: Path, width: int, height: int) -> dict:
+    """Salva PNG e gera versao JPG 1200x1200."""
+    from app.services.url_helper import path_to_url
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(result_bytes)
 
@@ -94,8 +197,8 @@ def apply_color_variation(
     canvas.save(jpg_path, format="JPEG", quality=92)
 
     return {
-        "png_url": str(output_path),
-        "jpg_url": str(jpg_path),
+        "png_url": path_to_url(output_path),
+        "jpg_url": path_to_url(jpg_path),
         "resolution": f"{width}x{height}",
         "cost_cents": GEMINI_COST_PER_IMAGE_CENTS,
     }
