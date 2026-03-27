@@ -2,6 +2,7 @@ import anthropic
 import base64
 import json
 import logging
+import time
 from PIL import Image
 import io
 
@@ -60,6 +61,8 @@ def detect_protected_regions(image_bytes: bytes) -> dict:
     prompt = DETECTION_PROMPT.format(width=width, height=height)
 
     try:
+        start_ms = int(time.time() * 1000)
+
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
@@ -78,10 +81,32 @@ def detect_protected_regions(image_bytes: bytes) -> dict:
                 ],
             }],
         )
+
+        duration_ms = int(time.time() * 1000) - start_ms
         raw = response.content[0].text.strip()
         result = json.loads(raw)
         tokens = response.usage.input_tokens + response.usage.output_tokens
-        return {**result, "tokens_used": tokens}
+        result["tokens_used"] = tokens
+        result["prompt_used"] = prompt
+        result["model_used"] = "claude-sonnet-4-20250514"
+        result["duration_ms"] = duration_ms
+        result["api_log"] = {
+            "request_payload": json.dumps({
+                "model": "claude-sonnet-4-20250514",
+                "prompt_preview": prompt[:200],
+                "image_size_bytes": len(image_bytes),
+                "max_tokens": 1024,
+            }),
+            "response_payload": json.dumps({
+                "has_protected_regions": result.get("has_protected_regions"),
+                "regions_count": len(result.get("protected_regions", [])),
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+                "duration_ms": duration_ms,
+            }),
+            "http_status": 200,
+        }
+        return result
 
     except json.JSONDecodeError as e:
         logger.error(f"Claude retornou JSON invalido: {e}")
