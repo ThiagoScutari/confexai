@@ -1,0 +1,113 @@
+{
+  "total_cost_cents": 60,
+  "results": [
+    {
+      "job_id": "54832a94-2577-440e-8766-6db27e3419e5",
+      "color_hex": "#696980",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_frente.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_frente.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "cdb697f3-196e-4f0b-a354-490b375ac404",
+      "color_hex": "#978b7b",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_frente.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_frente.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "5c978256-a235-4b49-9b7f-b238b3139064",
+      "color_hex": "#9e987d",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_frente.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_frente.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "07da04f4-26b6-4cca-8f05-7f5a8e4c7c0b",
+      "color_hex": "#696980",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_costas.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_costas.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "b898cdd8-50b2-4030-bbc3-de1c7bc6a5bd",
+      "color_hex": "#978b7b",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_costas.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_costas.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "28c539e0-7c8b-4782-8366-ccd18aecfe11",
+      "color_hex": "#9e987d",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_costas.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_costas.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "147cc39e-582e-4708-aa08-72e1a862ec31",
+      "color_hex": "#696980",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_lat_direita.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_lat_direita.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "660e3a50-c1ac-4b0a-b280-a510abecdf89",
+      "color_hex": "#978b7b",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_lat_direita.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_lat_direita.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "d6323fa6-8e4b-463e-ac01-73bf0bb31abb",
+      "color_hex": "#9e987d",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_lat_direita.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_lat_direita.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "24326b16-3637-455c-a446-ab2726954327",
+      "color_hex": "#696980",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_lat_esquerda.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_696980_lat_esquerda.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "7d881ecb-b247-4ed5-ab32-9793056edea6",
+      "color_hex": "#978b7b",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_lat_esquerda.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_978B7B_lat_esquerda.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    },
+    {
+      "job_id": "ce16a033-05f3-428e-b390-2fd9b254f40c",
+      "color_hex": "#9e987d",
+      "status": "pending_review",
+      "png_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_lat_esquerda.png",
+      "jpg_url": "/app/examples/uploads/92d68bd9-3a3c-4a4d-9c75-ba0c3a78ca0d/color_9E987D_lat_esquerda.jpg",
+      "cost_cents": 3,
+      "method": "gemini"
+    }
+  ]
+}
