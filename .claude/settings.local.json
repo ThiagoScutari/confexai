@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(ls backend/app/migrations/rollback_sprint_0*.py)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
