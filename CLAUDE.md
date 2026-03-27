@@ -154,3 +154,4 @@ docker compose exec db psql -U confexai -d confexai_db
 | 08 | Histórico completo: prompt, métricas, job_api_logs | 44 |
 | 09 | Dívida técnica: índices, N+1, rollbacks, docs | 50 |
 | 10 | Fix bug de view no upload — arquivos distintos por view | 55 |
+| 11 | Validação pipeline completo — 4 views × 3 cores end-to-end | 55 |
