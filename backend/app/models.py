@@ -77,12 +77,32 @@ class GenerationJob(Base):
     result = Column(Text, nullable=True)           # JSON stringificado
     error_message = Column(Text, nullable=True)
     rejection_reason = Column(Text, nullable=True)
+    prompt_used = Column(Text, nullable=True)
+    model_used = Column(String(100), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    input_image_url = Column(String(500), nullable=True)
+    fallback_reason = Column(Text, nullable=True)
+    is_archived = Column(Boolean, default=False, nullable=False)
     approved_at = Column(DateTime, nullable=True)
     approved_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
     product_image = relationship("ProductImage", back_populates="jobs")
+    api_logs = relationship("JobApiLog", back_populates="job")
+
+
+class JobApiLog(Base):
+    __tablename__ = "job_api_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("generation_jobs.id", ondelete="CASCADE"), nullable=False)
+    request_payload = Column(Text, nullable=True)
+    response_payload = Column(Text, nullable=True)
+    http_status = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("GenerationJob", back_populates="api_logs")
 
 
 class SEODescription(Base):
