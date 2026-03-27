@@ -156,3 +156,4 @@ docker compose exec db psql -U confexai -d confexai_db
 | 10 | Fix bug de view no upload — arquivos distintos por view | 55 |
 | 11 | Validação pipeline completo — 4 views × 3 cores end-to-end | 55 |
 | 12 | Descrições SEO — Claude Vision gera título/descrição para ML, Shopee, Shopify | 65 |
+| 13 | Backlog SEO — updated_at, índice composto, rate limiting no endpoint SEO | 68 |
