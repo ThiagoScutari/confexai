@@ -9,6 +9,7 @@ class ImageResponse(BaseModel):
     type: str
     original_url: str | None
     processed_url: str | None
+    public_url: str | None = None
     view: str | None = None
     status: str
     created_at: datetime

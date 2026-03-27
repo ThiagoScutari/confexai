@@ -10,6 +10,7 @@ import io
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import Product, ProductImage, GenerationJob, JobType, JobStatus
+from app.services.url_helper import path_to_url
 from app.schemas.images import ImageResponse
 from app.schemas.common import StandardResponse
 
@@ -92,6 +93,7 @@ async def upload_image(
             type=image.type,
             original_url=image.original_url,
             processed_url=image.processed_url,
+            public_url=path_to_url(image.original_url),
             view=image.view,
             status="uploaded",
             created_at=image.created_at,
