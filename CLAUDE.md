@@ -152,4 +152,4 @@ docker compose exec db psql -U confexai -d confexai_db
 | 06 | UX: toasts, progress steps, modal de confirmação, resultados | 38 |
 | 07 | Resultados definitivo: archive, download ZIP, multi-seleção | 38 |
 | 08 | Histórico completo: prompt, métricas, job_api_logs | 44 |
-| 09 | Dívida técnica: índices, N+1, rollbacks, docs | — |
+| 09 | Dívida técnica: índices, N+1, rollbacks, docs | 50 |
