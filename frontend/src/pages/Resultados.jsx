@@ -395,7 +395,7 @@ export default function Resultados() {
                                 {/* Selection checkbox */}
                                 <div
                                   onClick={() => toggleImage(job.id)}
-                                  className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer z-10 transition-all ${
+                                  className={`absolute bottom-1.5 left-1.5 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer z-10 transition-all ${
                                     isJobSelected
                                       ? "bg-amber-500 border-amber-500"
                                       : "bg-black/40 border-white/40 hover:border-amber-400"
@@ -403,7 +403,7 @@ export default function Resultados() {
                                 >
                                   {isJobSelected && <Check size={11} className="text-surface-950" />}
                                 </div>
-                                <div className="absolute top-1.5 left-8 flex gap-1">
+                                <div className="absolute top-1.5 left-1.5 flex gap-1">
                                   {viewLabel && (
                                     <span className="text-xs bg-black/60 text-white px-1.5 py-0.5 rounded font-mono">
                                       {viewLabel}

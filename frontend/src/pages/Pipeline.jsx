@@ -88,7 +88,9 @@ export default function Pipeline() {
 
       setJobs(allJobs);
       setStep("review");
-      toast(`${allJobs.length} variacoes geradas com sucesso`, "success");
+      toast(`${allJobs.length} variacoes geradas`, "success");
+      // Redirecionar para Resultados apos 1.5s
+      setTimeout(() => navigate(`/resultados/${productId}`), 1500);
 
     } finally {
       setRunning(false);

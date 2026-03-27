@@ -141,9 +141,8 @@ export default function Produtos() {
       ) : (
         <div className="space-y-2">
           {products.map((p) => (
-            <button
+            <div
               key={p.id}
-              onClick={() => navigate(`/pipeline/${p.id}`)}
               className="w-full flex items-center justify-between bg-surface-800 hover:bg-surface-700 border border-surface-600 hover:border-surface-500 rounded-lg px-5 py-4 transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -157,14 +156,19 @@ export default function Produtos() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/resultados/${p.id}`); }}
-                  className="text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1 rounded hover:bg-surface-600 transition-all"
+                  onClick={() => navigate(`/resultados/${p.id}`)}
+                  className="px-3 py-1.5 text-xs bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-md transition-colors"
                 >
                   Resultados
                 </button>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+                <button
+                  onClick={() => navigate(`/pipeline/${p.id}`)}
+                  className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-md transition-colors"
+                >
+                  Pipeline →
+                </button>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
