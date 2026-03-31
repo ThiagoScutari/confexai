@@ -177,7 +177,7 @@ export default function Pipeline() {
                   value={colorInput}
                   onChange={(e) => setColorInput(e.target.value)}
                   placeholder="#RRGGBB"
-                  className="bg-surface-700 border border-surface-600 rounded px-3 py-1.5 text-xs font-mono text-neutral-100 w-28 focus:outline-none focus:border-amber-500"
+                  className="input-base w-28 !text-xs font-mono !py-1.5"
                 />
                 <button
                   onClick={() => {
@@ -186,7 +186,7 @@ export default function Pipeline() {
                       setColorInput("");
                     }
                   }}
-                  className="px-2 py-1.5 bg-surface-700 hover:bg-surface-600 border border-surface-600 rounded text-xs text-neutral-300 transition-colors"
+                  className="px-2 py-1.5 bg-surface-700 hover:bg-surface-600 border border-surface-600 rounded-lg text-xs text-neutral-300 transition-colors"
                 >
                   + Add
                 </button>

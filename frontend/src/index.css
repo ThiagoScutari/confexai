@@ -4,3 +4,16 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; -webkit-font-smoothing: antialiased; }
+
+@layer components {
+  .input-base {
+    @apply bg-surface-700 border border-surface-600 text-neutral-100
+           rounded-lg px-3 py-2 text-sm w-full transition-all outline-none
+           placeholder:text-neutral-600
+           focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20;
+  }
+
+  .input-error {
+    @apply border-red-500/60 focus:border-red-400 focus:ring-red-500/20;
+  }
+}
