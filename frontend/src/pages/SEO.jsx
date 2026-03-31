@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Sparkles, Copy, Check, AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
 import { generateSEO, getSEO, getProduct, listJobs } from "../services/api";
 import { useToast } from "../components/Toast";
+import { SkeletonSEOCard } from "../components/Skeleton";
 
 const ML_FIELDS = [
   {
@@ -141,7 +142,7 @@ export default function SEO() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-surface-800 border border-surface-700 rounded-xl animate-pulse" />
+              <SkeletonSEOCard key={i} />
             ))}
           </div>
           <div className="h-64 bg-surface-800 border border-surface-700 rounded-xl animate-pulse" />
@@ -188,7 +189,7 @@ export default function SEO() {
                 value={fabric}
                 onChange={(e) => setFabric(e.target.value)}
                 placeholder="ex: 100% algodao, viscose, linho..."
-                className="w-full bg-surface-700 border border-surface-600 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-amber-500/50"
+                className="input-base"
               />
               <p className="text-[11px] text-neutral-600">
                 Ajuda na inferencia de cuidados de lavagem e posicionamento
@@ -230,7 +231,7 @@ export default function SEO() {
                 value={sizingInfo}
                 onChange={(e) => setSizingInfo(e.target.value)}
                 placeholder="ex: P ao GG, 36 ao 46, tamanho unico..."
-                className="w-full bg-surface-700 border border-surface-600 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-amber-500/50"
+                className="input-base"
               />
             </div>
 
@@ -244,7 +245,7 @@ export default function SEO() {
                 onChange={(e) => setAdditionalNotes(e.target.value)}
                 rows={3}
                 placeholder="ex: tem forro, botoes dourados, colecao verao 2026..."
-                className="w-full bg-surface-700 border border-surface-600 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-amber-500/50 resize-none"
+                className="input-base resize-none"
               />
               <p className="text-[11px] text-neutral-600">
                 Detalhes que a camera pode nao capturar

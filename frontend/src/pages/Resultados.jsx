@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronDown, ChevronRight, Download, Archive, ArchiveRestore,
-  Check, X, RefreshCw, Package, Images
+  Check, X, RefreshCw, Package, Images, Trash2
 } from "lucide-react";
-import { listJobs, approveJob, rejectJob, archiveJob, unarchiveJob } from "../services/api";
+import { listJobs, approveJob, rejectJob, archiveJob, unarchiveJob, deleteJob } from "../services/api";
 import { useToast } from "../components/Toast";
+import { SkeletonCard } from "../components/Skeleton";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:8002";
 
@@ -153,6 +154,26 @@ export default function Resultados() {
       }));
       toast("Job desarquivado", "success");
     } catch { toast("Erro ao desarquivar job", "error"); }
+  };
+
+  const handleDeleteJob = async (jobId, productId) => {
+    if (!window.confirm("Remover esta imagem da visualização permanentemente?")) return;
+    try {
+      await deleteJob(jobId);
+      setJobsByProduct((prev) => {
+        const updated = { ...prev };
+        if (updated[productId]) {
+          updated[productId] = {
+            ...updated[productId],
+            jobs: updated[productId].jobs.filter((j) => j.id !== jobId),
+          };
+        }
+        return updated;
+      });
+      toast("Imagem removida da visualização", "success");
+    } catch (err) {
+      toast(err.response?.data?.detail || "Erro ao remover", "error");
+    }
   };
 
   const downloadProduct = (productId) => {
@@ -307,16 +328,9 @@ export default function Resultados() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="bg-surface-800 border border-surface-700 rounded-xl p-5 animate-pulse">
-              <div className="h-4 w-48 bg-surface-700 rounded mb-3" />
-              <div className="grid grid-cols-4 gap-3">
-                {[1,2,3,4].map((j) => (
-                  <div key={j} className="aspect-square bg-surface-700 rounded-lg" />
-                ))}
-              </div>
-            </div>
+        <div className="grid grid-cols-4 gap-3">
+          {[1,2,3,4,5,6,7,8].map((i) => (
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : productList.length === 0 ? (
@@ -415,123 +429,139 @@ export default function Resultados() {
                           const jpgUrl = result?.jpg_url;
                           const fullUrl = jpgUrl ? `${API_BASE}${jpgUrl}` : null;
                           const colorHex = result?.color_hex || "#888";
+                          const colorName = getColorName(colorHex);
                           const viewLabel = VIEW_LABELS[job.view] || job.view || "";
                           const filename = buildFilename(job);
-
                           const isJobSelected = selectedImages.has(job.id);
 
                           return (
                             <div
                               key={job.id}
-                              className={`bg-surface-700 border-2 rounded-lg overflow-hidden transition-all ${
-                                isJobSelected ? "ring-2 ring-amber-500" :
-                                job.status === "approved" ? "border-emerald-500/30" :
-                                job.status === "rejected" ? "border-red-500/20 opacity-40" :
-                                "border-surface-600"
+                              className={`relative bg-surface-800 rounded-xl overflow-hidden border-2 transition-all group ${
+                                isJobSelected
+                                  ? "border-amber-500 ring-2 ring-amber-500/20"
+                                  : job.status === "approved"
+                                    ? "border-emerald-500/40"
+                                    : job.status === "rejected"
+                                      ? "border-red-500/20 opacity-50"
+                                      : "border-surface-600 hover:border-surface-500"
                               }`}
                             >
-                              <div className="relative aspect-square bg-surface-800">
+                              {/* Imagem */}
+                              <div className="relative aspect-square bg-surface-900">
                                 {fullUrl ? (
-                                  <img src={fullUrl} alt={filename} className="w-full h-full object-contain" />
+                                  <img src={fullUrl} alt={colorName || colorHex} className="w-full h-full object-contain" />
                                 ) : (
-                                  <div className="w-full h-full" style={{ backgroundColor: colorHex }} />
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <div className="w-12 h-12 rounded-full border border-white/10" style={{ backgroundColor: colorHex }} />
+                                  </div>
                                 )}
-                                {/* Selection checkbox */}
+
+                                {/* Overlay clicável para seleção */}
                                 <div
                                   onClick={() => toggleImage(job.id)}
-                                  className={`absolute bottom-1.5 left-1.5 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer z-10 transition-all ${
+                                  className="absolute inset-0 cursor-pointer"
+                                />
+
+                                {/* Checkbox — canto inferior esquerdo */}
+                                <div
+                                  onClick={(e) => { e.stopPropagation(); toggleImage(job.id); }}
+                                  className={`absolute bottom-2 left-2 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer z-10 transition-all ${
                                     isJobSelected
                                       ? "bg-amber-500 border-amber-500"
-                                      : "bg-black/40 border-white/40 hover:border-amber-400"
+                                      : "bg-black/50 border-white/30 hover:border-amber-400"
                                   }`}
                                 >
                                   {isJobSelected && <Check size={11} className="text-surface-950" />}
                                 </div>
-                                <div className="absolute top-1.5 left-1.5 flex gap-1">
-                                  {viewLabel && (
-                                    <span className="text-xs bg-black/60 text-white px-1.5 py-0.5 rounded font-mono">
-                                      {viewLabel}
-                                    </span>
-                                  )}
-                                </div>
-                                {seoReadyProductIds.has(job.product_id) && (
-                                  <span className="absolute top-1.5 right-8 bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[9px] font-mono px-1.5 py-0.5 rounded">
-                                    SEO
+
+                                {/* View badge — canto superior esquerdo */}
+                                {viewLabel && (
+                                  <span className="absolute top-2 left-2 text-xs bg-black/70 text-white px-1.5 py-0.5 rounded font-mono z-10">
+                                    {viewLabel}
                                   </span>
                                 )}
-                                {fullUrl && (
-                                  <button
-                                    onClick={() => downloadImage(jpgUrl, filename)}
-                                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-black/80 text-white rounded flex items-center justify-center transition-opacity"
-                                    title="Baixar imagem"
-                                  >
-                                    <Download size={11} />
-                                  </button>
-                                )}
-                                {/* Per-job archive/unarchive */}
-                                {!job.is_archived ? (
-                                  <button
-                                    onClick={() => handleArchiveJob(job.id, productId)}
-                                    className="absolute bottom-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-red-900/80 text-neutral-400 hover:text-red-300 rounded flex items-center justify-center transition-all"
-                                    title="Arquivar"
-                                  >
-                                    <Archive size={11} />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => handleUnarchiveJob(job.id, productId)}
-                                    className="absolute bottom-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-emerald-900/80 text-neutral-400 hover:text-emerald-300 rounded flex items-center justify-center transition-all"
-                                    title="Desarquivar"
-                                  >
-                                    <ArchiveRestore size={11} />
-                                  </button>
-                                )}
-                              </div>
 
-                              <div className="p-2">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <div className="w-2.5 h-2.5 rounded-full shrink-0 border border-surface-500" style={{ backgroundColor: colorHex }} />
-                                    <span className="text-xs font-mono text-neutral-400 truncate">{colorHex}</span>
-                                    {getColorName(colorHex) && (
-                                      <span className="text-xs text-neutral-500">· {getColorName(colorHex)}</span>
-                                    )}
-                                  </div>
+                                {/* Ações — surgem no hover, canto superior direito */}
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                   {fullUrl && (
                                     <button
-                                      onClick={() => downloadImage(jpgUrl, filename)}
-                                      className="text-neutral-600 hover:text-amber-400 transition-colors shrink-0"
+                                      onClick={(e) => { e.stopPropagation(); downloadImage(jpgUrl, filename); }}
+                                      className="w-6 h-6 bg-black/70 hover:bg-black/90 text-white rounded flex items-center justify-center"
                                       title="Baixar"
                                     >
                                       <Download size={11} />
                                     </button>
                                   )}
+                                  {!job.is_archived ? (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleArchiveJob(job.id, productId); }}
+                                      className="w-6 h-6 bg-black/70 hover:bg-amber-900/80 text-neutral-400 hover:text-amber-300 rounded flex items-center justify-center"
+                                      title="Arquivar"
+                                    >
+                                      <Archive size={11} />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleUnarchiveJob(job.id, productId); }}
+                                      className="w-6 h-6 bg-black/70 hover:bg-emerald-900/80 text-neutral-400 hover:text-emerald-300 rounded flex items-center justify-center"
+                                      title="Desarquivar"
+                                    >
+                                      <ArchiveRestore size={11} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteJob(job.id, productId); }}
+                                    className="w-6 h-6 bg-black/70 hover:bg-red-900/90 text-neutral-400 hover:text-red-400 rounded flex items-center justify-center"
+                                    title="Excluir da visualização"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
                                 </div>
-                                <span className="text-[10px] font-mono text-neutral-600">
-                                  ID {job.id.slice(0, 8)}
-                                </span>
+
+                                {/* Status badge — canto inferior direito */}
+                                {job.status === "approved" && (
+                                  <span className="absolute bottom-2 right-2 flex items-center gap-0.5 text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-medium z-10">
+                                    <Check size={9} /> OK
+                                  </span>
+                                )}
+                                {job.status === "rejected" && (
+                                  <span className="absolute bottom-2 right-2 flex items-center gap-0.5 text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-medium z-10">
+                                    <X size={9} /> Rej
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Footer do card */}
+                              <div className="p-2.5">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <div
+                                    className="w-3 h-3 rounded-full border border-white/10 shrink-0"
+                                    style={{ backgroundColor: colorHex }}
+                                  />
+                                  <span className="text-xs font-medium text-neutral-200 truncate">
+                                    {colorName || colorHex}
+                                  </span>
+                                </div>
+                                <p className="text-xs font-mono text-neutral-600">
+                                  {String(job.id).slice(0, 8)}
+                                </p>
 
                                 {job.status === "pending_review" && (
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-1 mt-1.5">
                                     <button
                                       onClick={() => handleApprove(job.id, productId)}
-                                      className="flex-1 flex items-center justify-center gap-1 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded text-xs transition-colors"
+                                      className="flex-1 flex items-center justify-center gap-1 py-1 bg-amber-500 hover:bg-amber-400 text-surface-950 rounded text-xs font-medium transition-colors"
                                     >
-                                      <Check size={10} /> Ok
+                                      <Check size={10} /> Aprovar
                                     </button>
                                     <button
                                       onClick={() => handleReject(job.id, productId)}
-                                      className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-xs transition-colors"
+                                      className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-400 hover:text-red-300 rounded text-xs transition-colors"
                                     >
-                                      <X size={10} /> Nao
+                                      <X size={10} /> Rejeitar
                                     </button>
                                   </div>
-                                )}
-                                {job.status === "approved" && (
-                                  <p className="text-xs text-emerald-400 text-center py-1">Aprovado</p>
-                                )}
-                                {job.status === "rejected" && (
-                                  <p className="text-xs text-red-400 text-center py-1">Rejeitado</p>
                                 )}
                               </div>
                             </div>

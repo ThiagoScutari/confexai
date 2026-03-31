@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Package, ChevronRight } from "lucide-react";
 import { listProducts, createProduct } from "../services/api";
 import { useToast } from "../components/Toast";
+import { SkeletonProductCard } from "../components/Skeleton";
 
 export default function Produtos() {
   const [products, setProducts] = useState([]);
@@ -65,7 +66,7 @@ export default function Produtos() {
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full bg-surface-700 border border-surface-600 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="input-base"
                 placeholder="Ex: Blusa Floral Manga Longa"
               />
             </div>
@@ -75,7 +76,7 @@ export default function Produtos() {
                 required
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full bg-surface-700 border border-surface-600 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="input-base"
                 placeholder="blusa, calca, vestido..."
               />
             </div>
@@ -85,7 +86,7 @@ export default function Produtos() {
                 required
                 value={form.fabric}
                 onChange={(e) => setForm({ ...form, fabric: e.target.value })}
-                className="w-full bg-surface-700 border border-surface-600 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="input-base"
                 placeholder="viscose, algodao..."
               />
             </div>
@@ -94,7 +95,7 @@ export default function Produtos() {
               <input
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full bg-surface-700 border border-surface-600 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="input-base"
                 placeholder="Opcional"
               />
             </div>
@@ -103,14 +104,14 @@ export default function Produtos() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-surface-950 rounded text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-surface-950 rounded-lg text-sm font-medium transition-colors"
             >
               {submitting ? "Salvando..." : "Criar produto"}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-4 py-2 bg-surface-700 hover:bg-surface-600 text-neutral-300 rounded text-sm transition-colors"
+              className="px-3 py-1.5 text-neutral-400 hover:text-neutral-100 hover:bg-surface-700 rounded-md transition-colors text-sm"
             >
               Cancelar
             </button>
@@ -122,15 +123,7 @@ export default function Produtos() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-surface-800 border border-surface-700 rounded-lg px-5 py-4 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 bg-surface-700 rounded" />
-                <div className="space-y-2">
-                  <div className="h-3 w-40 bg-surface-700 rounded" />
-                  <div className="h-2 w-24 bg-surface-700 rounded" />
-                </div>
-              </div>
-            </div>
+            <SkeletonProductCard key={i} />
           ))}
         </div>
       ) : products.length === 0 ? (
@@ -157,19 +150,19 @@ export default function Produtos() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/seo/${p.id}`); }}
-                  className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-md transition-all"
+                  className="px-3 py-1.5 text-xs bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-lg transition-colors"
                 >
                   SEO / ML
                 </button>
                 <button
                   onClick={() => navigate(`/resultados/${p.id}`)}
-                  className="px-3 py-1.5 text-xs bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-xs bg-surface-700 hover:bg-surface-600 border border-surface-600 text-neutral-300 rounded-lg transition-colors"
                 >
                   Resultados
                 </button>
                 <button
                   onClick={() => navigate(`/pipeline/${p.id}`)}
-                  className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-xs bg-amber-500 hover:bg-amber-400 text-surface-950 font-medium rounded-lg transition-colors"
                 >
                   Pipeline →
                 </button>

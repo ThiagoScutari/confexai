@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Clock, Zap, AlertTriangle, Check, X } from "lucide-react";
 import { getHistory } from "../services/api";
 import { useToast } from "../components/Toast";
+import { SkeletonRow } from "../components/Skeleton";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:8002";
 
@@ -98,7 +99,7 @@ export default function Historico() {
       {loading ? (
         <div className="space-y-2">
           {[1,2,3,4,5].map((i) => (
-            <div key={i} className="bg-surface-800 border border-surface-700 rounded-lg h-14 animate-pulse" />
+            <SkeletonRow key={i} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
