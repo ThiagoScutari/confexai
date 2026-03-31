@@ -77,6 +77,8 @@ export const archiveJob = (jobId) =>
   api.patch(`/jobs/${jobId}/archive`);
 export const unarchiveJob = (jobId) =>
   api.patch(`/jobs/${jobId}/unarchive`);
+export const deleteJob = (jobId) =>
+  api.patch(`/jobs/${jobId}/delete`);
 
 // Polling
 export const pollJob = (jobId, onUpdate, maxAttempts = 30, intervalMs = 2000) =>

@@ -249,6 +249,33 @@ class RejectRequest(BaseModel):
     reason: str
 
 
+@router.patch("/{job_id}/delete")
+def soft_delete_job(
+    job_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """
+    Marca job como excluído (deleted_at). Não aparece mais em nenhuma listagem.
+    O registro permanece no banco para auditoria.
+    """
+    from datetime import datetime
+
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
+    if not job:
+        raise HTTPException(404, detail="Job não encontrado.")
+
+    job.deleted_at = datetime.utcnow()
+    db.commit()
+    return StandardResponse(data={
+        "id": str(job.id),
+        "deleted_at": job.deleted_at.isoformat(),
+    })
+
+
 @router.delete("/cleanup-broken")
 def cleanup_broken_jobs(
     db: Session = Depends(get_db),
@@ -300,7 +327,9 @@ def list_jobs(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    query = db.query(GenerationJob)
+    query = db.query(GenerationJob).filter(
+        GenerationJob.deleted_at == None,
+    )
 
     if not include_archived:
         query = query.filter(GenerationJob.is_archived == False)
@@ -350,7 +379,9 @@ def get_history(
 ):
     from app.models import Product, ProductImage
 
-    query = db.query(GenerationJob).order_by(GenerationJob.created_at.desc())
+    query = db.query(GenerationJob).filter(
+        GenerationJob.deleted_at == None,
+    ).order_by(GenerationJob.created_at.desc())
 
     if product_id:
         query = query.join(ProductImage).filter(
@@ -441,6 +472,7 @@ def export_product_zip(
             ProductImage.product_id == product_id,
             GenerationJob.type == JobType.color_variation,
             GenerationJob.is_archived == False,
+            GenerationJob.deleted_at == None,
         )
         .all()
     )
@@ -514,6 +546,7 @@ def export_bulk_zip(
                     ProductImage.product_id == product_id,
                     GenerationJob.type == JobType.color_variation,
                     GenerationJob.is_archived == False,
+                    GenerationJob.deleted_at == None,
                 )
                 .all()
             )
