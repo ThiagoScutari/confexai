@@ -83,6 +83,7 @@ class GenerationJob(Base):
     input_image_url = Column(String(500), nullable=True)
     fallback_reason = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True, default=None)
     approved_at = Column(DateTime, nullable=True)
     approved_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
