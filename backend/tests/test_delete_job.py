@@ -53,3 +53,36 @@ def test_delete_job_duas_vezes_retorna_404(client, auth_headers, sample_job_pend
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+def test_approve_job_deletado_retorna_404(client, auth_headers, sample_job_pending_review, db):
+    from datetime import datetime
+    from app.models import GenerationJob
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == sample_job_pending_review.id
+    ).first()
+    job.deleted_at = datetime.utcnow()
+    db.commit()
+
+    response = client.post(
+        f"/api/v1/jobs/{sample_job_pending_review.id}/approve",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_reject_job_deletado_retorna_404(client, auth_headers, sample_job_pending_review, db):
+    from datetime import datetime
+    from app.models import GenerationJob
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == sample_job_pending_review.id
+    ).first()
+    job.deleted_at = datetime.utcnow()
+    db.commit()
+
+    response = client.post(
+        f"/api/v1/jobs/{sample_job_pending_review.id}/reject",
+        json={"reason": "teste"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
