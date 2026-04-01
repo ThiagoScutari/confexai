@@ -434,7 +434,10 @@ def archive_job(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
     if not job:
         raise HTTPException(404, detail="Job nao encontrado.")
     job.is_archived = True
@@ -448,7 +451,10 @@ def unarchive_job(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
     if not job:
         raise HTTPException(404, detail="Job nao encontrado.")
     job.is_archived = False
@@ -589,7 +595,10 @@ def get_job(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
     if not job:
         raise HTTPException(404, detail="Job nao encontrado.")
     return StandardResponse(data={
@@ -612,7 +621,10 @@ def approve_job(
     current_user: dict = Depends(get_current_user),
 ):
     from datetime import datetime
-    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
     if not job:
         raise HTTPException(404, detail="Job nao encontrado.")
     if job.status != JobStatus.pending_review:
@@ -635,7 +647,10 @@ def reject_job(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
-    job = db.query(GenerationJob).filter(GenerationJob.id == job_id).first()
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id,
+        GenerationJob.deleted_at == None,
+    ).first()
     if not job:
         raise HTTPException(404, detail="Job nao encontrado.")
     if job.status not in (JobStatus.pending_review, JobStatus.done):
