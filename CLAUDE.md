@@ -107,6 +107,7 @@ frontend/
 type:            background_removal | protected_region_detection | color_variation | seo_description | video_ugc
 status:          pending | processing | done | failed | pending_review | approved | rejected
 is_archived:     bool (soft delete visual)
+deleted_at:      timestamp (soft delete permanente — não aparece na UI, fica no banco)
 prompt_used:     text (prompt exato enviado à IA)
 model_used:      varchar (ex: gemini-2.0-flash-exp)
 duration_ms:     int (tempo de execução)
@@ -134,6 +135,7 @@ ix_generation_jobs_is_archived       — filter is_archived = false
 ix_job_api_logs_job_id               — JOIN job_api_logs
 ix_product_images_product_id         — JOIN product_images
 ix_seo_descriptions_product_platform — WHERE product_id + platform
+ix_generation_jobs_deleted_at        — WHERE deleted_at IS NULL (partial index)
 ```
 
 ---
@@ -242,3 +244,4 @@ docker compose exec db psql -U confexai -d confexai_db
 | 12 | Descrições SEO — Claude Vision gera título/descrição para ML, Shopee, Shopify | 65 |
 | 13 | Backlog SEO — updated_at, índice composto, rate limiting no endpoint SEO | 68 |
 | 14 | Documentação — SPEC.md, ROUTE_REFERENCE, design tokens, ADRs | 68 |
+| 15 | UI/UX Virada 360 — skeleton, hierarquia visual, soft delete (deleted_at) | 78 |
