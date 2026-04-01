@@ -40,7 +40,7 @@ export default function Login() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-surface-700 border border-surface-600 rounded-lg px-4 py-2.5 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors"
+              className="input-base"
             />
           </div>
           <div>
@@ -49,7 +49,7 @@ export default function Login() {
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-surface-700 border border-surface-600 rounded-lg px-4 py-2.5 text-sm text-neutral-100 focus:outline-none focus:border-amber-500 transition-colors"
+              className="input-base"
               placeholder="admin123"
             />
           </div>
