@@ -482,6 +482,13 @@ export default function Resultados() {
                                   </span>
                                 )}
 
+                                {/* Quality warning badge */}
+                                {result?.quality_metrics?.quality_warning && (
+                                  <span className="absolute top-2 left-20 text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-mono z-10">
+                                    Qualidade baixa
+                                  </span>
+                                )}
+
                                 {/* Ações — surgem no hover, canto superior direito */}
                                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                   {fullUrl && (
