@@ -33,18 +33,97 @@ def generate_mask(image_size: tuple[int, int], protected_regions: list[dict]) ->
     return buf.getvalue()
 
 
-COLOR_VARIATION_PROMPT = """
-Recolor this clothing item to the color {color_hex}.
+COLOR_VARIATION_PROMPT = """You are editing a product photograph for an e-commerce catalog.
 
-Rules:
-- Apply the new color uniformly to the entire garment fabric
-- Preserve ALL fabric texture, weave pattern, natural folds, and shadows
-- Maintain realistic fabric shading and highlights appropriate for this color
-- Keep the result looking like a real product photograph, not an illustration
-- Do NOT add any new design elements
-- Do NOT change the garment shape or silhouette
-- The background must remain fully transparent
-"""
+TASK: Change ONLY the fabric color of this exact clothing item to {color_hex}.
+
+CRITICAL CONSTRAINTS — do NOT violate any:
+1. This is the SAME garment — preserve every structural detail: seams, buttons, collar, cuffs, pockets, zippers, labels, stitching
+2. Preserve the EXACT silhouette, proportions, and pose of the garment
+3. Preserve ALL fabric texture: weave pattern, creases, natural folds, wrinkles, shadows, highlights
+4. Preserve the EXACT lighting direction and intensity
+5. The color {color_hex} must be applied as a fabric dye — not as a color overlay or filter
+6. Shadowed areas should be a darker shade of {color_hex}, highlighted areas a lighter shade
+7. Do NOT change, add, or remove any design element
+8. Do NOT change the image composition, framing, or aspect ratio
+9. The background must remain completely transparent (no solid color)
+10. Output the image at the highest possible resolution
+
+The result must be indistinguishable from a real product photo of this exact garment in the color {color_hex}."""
+
+
+def _restore_alpha(original_bytes: bytes, gemini_bytes: bytes) -> bytes:
+    """
+    Aplica o canal alpha da imagem original sobre o output do Gemini.
+    Restaura transparência do fundo e redimensiona para resolução original.
+    """
+    original = Image.open(io.BytesIO(original_bytes)).convert("RGBA")
+    gemini_img = Image.open(io.BytesIO(gemini_bytes)).convert("RGBA")
+
+    # Redimensionar output do Gemini para o tamanho da original
+    if gemini_img.size != original.size:
+        gemini_img = gemini_img.resize(original.size, Image.LANCZOS)
+
+    # Extrair canal alpha da original e aplicar sobre o resultado
+    _, _, _, original_alpha = original.split()
+    gemini_img.putalpha(original_alpha)
+
+    buf = io.BytesIO()
+    gemini_img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _compute_quality_metrics(original_bytes: bytes, result_bytes: bytes, target_hex: str) -> dict:
+    """Calcula métricas de qualidade para o resultado da variação de cor."""
+    from PIL import ImageFilter
+
+    original = Image.open(io.BytesIO(original_bytes)).convert("RGBA")
+    result = Image.open(io.BytesIO(result_bytes)).convert("RGBA")
+
+    if result.size != original.size:
+        result = result.resize(original.size, Image.LANCZOS)
+
+    orig_arr = np.array(original)
+    result_arr = np.array(result)
+
+    # Máscara da roupa (alpha > 128)
+    mask = orig_arr[:, :, 3] > 128
+
+    if not mask.any():
+        return {"edge_correlation": 0.0, "color_distance": 999.0, "quality_warning": True}
+
+    # 1. Correlação de bordas (preservação de estrutura)
+    orig_gray = Image.fromarray(
+        (0.299 * orig_arr[:, :, 0] + 0.587 * orig_arr[:, :, 1] + 0.114 * orig_arr[:, :, 2]).astype(np.uint8)
+    )
+    result_gray = Image.fromarray(
+        (0.299 * result_arr[:, :, 0] + 0.587 * result_arr[:, :, 1] + 0.114 * result_arr[:, :, 2]).astype(np.uint8)
+    )
+    orig_edges = np.array(orig_gray.filter(ImageFilter.FIND_EDGES))
+    result_edges = np.array(result_gray.filter(ImageFilter.FIND_EDGES))
+
+    oe = orig_edges[mask].astype(float)
+    re = result_edges[mask].astype(float)
+    edge_correlation = float(np.corrcoef(oe, re)[0, 1]) if oe.std() > 0 and re.std() > 0 else 0.0
+
+    # 2. Precisão de cor (distância euclidiana do target)
+    target_r = int(target_hex[1:3], 16)
+    target_g = int(target_hex[3:5], 16)
+    target_b = int(target_hex[5:7], 16)
+
+    result_r = float(result_arr[:, :, 0][mask].mean())
+    result_g = float(result_arr[:, :, 1][mask].mean())
+    result_b = float(result_arr[:, :, 2][mask].mean())
+
+    color_distance = ((result_r - target_r) ** 2 + (result_g - target_g) ** 2 + (result_b - target_b) ** 2) ** 0.5
+
+    return {
+        "edge_correlation": round(edge_correlation, 4),
+        "color_distance": round(color_distance, 1),
+        "target_hex": target_hex,
+        "result_mean_rgb": [round(result_r), round(result_g), round(result_b)],
+        "quality_warning": edge_correlation < 0.40 or color_distance > 100,
+    }
 
 
 def apply_color_variation(
@@ -98,7 +177,7 @@ def _apply_via_gemini(
             ),
         ],
         config=types.GenerateContentConfig(
-            response_modalities=["IMAGE", "TEXT"],
+            response_modalities=["IMAGE"],
         ),
     )
 
@@ -114,8 +193,15 @@ def _apply_via_gemini(
     if result_bytes is None:
         raise ValueError("Gemini nao retornou imagem na resposta")
 
+    # Pós-processamento: restaurar alpha e resolução da original
+    result_bytes = _restore_alpha(image_bytes, result_bytes)
+
+    # Métricas de qualidade
+    quality = _compute_quality_metrics(image_bytes, result_bytes, target_hex)
+
     # Salvar resultado e gerar JPG
     result = _save_result(result_bytes, output_path, width, height)
+    result["quality_metrics"] = quality
     result["prompt_used"] = prompt
     result["model_used"] = "gemini-2.5-flash-image"
     result["duration_ms"] = duration_ms
@@ -124,7 +210,7 @@ def _apply_via_gemini(
             "model": "gemini-2.5-flash-image",
             "prompt": prompt,
             "image_size_bytes": len(image_bytes),
-            "response_modalities": ["IMAGE", "TEXT"],
+            "response_modalities": ["IMAGE"],
         }),
         "response_payload": json.dumps({
             "candidates_count": len(response.candidates),
@@ -142,29 +228,48 @@ def _apply_via_pillow(
     output_path: Path,
 ) -> dict:
     """
-    Fallback deterministico: aplica tint de cor via multiplicacao de canal.
-    Resultado menos realista mas funcional para MVP.
+    Fallback deterministico: aplica cor via transferência no espaço LAB.
+    Preserva luminância (sombras/highlights) e troca crominância para a cor alvo.
     """
+    from skimage import color as skcolor
+
     start_ms = int(time.time() * 1000)
     img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
     width, height = img.size
+    img_arr = np.array(img).astype(float)
+    alpha = img_arr[:, :, 3].copy()
 
-    r = int(target_hex[1:3], 16) / 255
-    g = int(target_hex[3:5], 16) / 255
-    b = int(target_hex[5:7], 16) / 255
+    # Converter RGB para LAB
+    rgb_normalized = img_arr[:, :, :3] / 255.0
+    lab = skcolor.rgb2lab(rgb_normalized)
 
-    img_array = np.array(img).astype(float)
-    # Preservar canal alpha
-    alpha = img_array[:, :, 3]
-    # Converter para escala de cinza (luminancia)
-    gray = 0.299 * img_array[:, :, 0] + 0.587 * img_array[:, :, 1] + 0.114 * img_array[:, :, 2]
-    # Aplicar cor alvo mantendo luminancia
-    img_array[:, :, 0] = np.clip(gray * r * 2, 0, 255)
-    img_array[:, :, 1] = np.clip(gray * g * 2, 0, 255)
-    img_array[:, :, 2] = np.clip(gray * b * 2, 0, 255)
-    img_array[:, :, 3] = alpha
+    # Cor alvo em LAB
+    target_r = int(target_hex[1:3], 16) / 255.0
+    target_g = int(target_hex[3:5], 16) / 255.0
+    target_b = int(target_hex[5:7], 16) / 255.0
+    target_lab = skcolor.rgb2lab(np.array([[[target_r, target_g, target_b]]]))[0, 0]
 
-    result_img = Image.fromarray(img_array.astype(np.uint8))
+    # Máscara da roupa (pixels não-transparentes)
+    garment_mask = alpha > 128
+
+    if garment_mask.any():
+        # Transferir crominância (a, b) do target, preservar luminância relativa
+        lab[:, :, 1][garment_mask] = target_lab[1]
+        lab[:, :, 2][garment_mask] = target_lab[2]
+
+        # Ajustar luminância proporcionalmente
+        orig_L_mean = lab[:, :, 0][garment_mask].mean()
+        target_L = target_lab[0]
+        if orig_L_mean > 0:
+            L_ratio = target_L / orig_L_mean
+            lab[:, :, 0][garment_mask] = np.clip(lab[:, :, 0][garment_mask] * L_ratio, 0, 100)
+
+    # Converter de volta para RGB
+    rgb_result = np.clip(skcolor.lab2rgb(lab) * 255, 0, 255).astype(np.uint8)
+
+    # Restaurar alpha
+    result_arr = np.dstack([rgb_result, alpha.astype(np.uint8)])
+    result_img = Image.fromarray(result_arr)
 
     # Salvar PNG
     buf = io.BytesIO()
@@ -173,8 +278,8 @@ def _apply_via_pillow(
 
     duration_ms = int(time.time() * 1000) - start_ms
     result = _save_result(result_bytes, output_path, width, height)
-    result["prompt_used"] = f"Pillow color tint: {target_hex}"
-    result["model_used"] = "pillow_fallback"
+    result["prompt_used"] = f"Pillow LAB color transfer: {target_hex}"
+    result["model_used"] = "pillow_fallback_lab"
     result["duration_ms"] = duration_ms
     result["api_log"] = None
     return result
