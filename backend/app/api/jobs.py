@@ -191,16 +191,15 @@ def create_color_variation(
 
             method = result.get("method", "gemini")
             job.status = JobStatus.pending_review
-            job.api_used = "gemini" if method == "gemini" else "gemini_fallback_pillow"
-            job.cost_cents = result["cost_cents"]
+            job.api_used = method
+            job.cost_cents = result.get("cost_cents", 0)
             job.result = json.dumps(result, ensure_ascii=False)
             job.completed_at = datetime.utcnow()
             job.prompt_used = result.get("prompt_used")
             job.model_used = result.get("model_used")
             job.duration_ms = result.get("duration_ms")
             job.input_image_url = path_to_url(image_path)
-            if method == "pillow_fallback":
-                job.fallback_reason = "Gemini retornou erro — usado fallback Pillow"
+            job.fallback_reason = result.get("fallback_reason")
             total_cost += result["cost_cents"]
 
             api_log_data = result.get("api_log")

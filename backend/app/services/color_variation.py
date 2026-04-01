@@ -133,18 +133,18 @@ def apply_color_variation(
     output_path: Path,
 ) -> dict:
     """
-    Tenta Gemini primeiro. Se falhar, usa fallback Pillow.
-    Registra qual metodo foi usado no resultado.
+    Aplica variação de cor via Gemini (primário) com fallback Pillow LAB.
+    ADR-006: usar google-genai SDK com response_modalities
+    ADR-007: Pillow fallback automático se Gemini falhar
     """
     try:
         result = _apply_via_gemini(image_bytes, target_hex, protected_regions, output_path)
-        result["method"] = "gemini"
+        result["fallback_reason"] = None
         return result
     except Exception as e:
-        logger.warning(f"Gemini falhou ({e}), usando fallback Pillow para {target_hex}")
+        logger.warning(f"Gemini falhou para {target_hex}: {e} — ativando Pillow fallback")
         result = _apply_via_pillow(image_bytes, target_hex, output_path)
-        result["method"] = "pillow_fallback"
-        result["cost_cents"] = 0  # fallback e gratuito
+        result["fallback_reason"] = f"Gemini erro: {str(e)[:200]}"
         return result
 
 
@@ -201,6 +201,9 @@ def _apply_via_gemini(
 
     # Salvar resultado e gerar JPG
     result = _save_result(result_bytes, output_path, width, height)
+    result["color_hex"] = target_hex
+    result["method"] = "gemini"
+    result["cost_cents"] = GEMINI_COST_PER_IMAGE_CENTS
     result["quality_metrics"] = quality
     result["prompt_used"] = prompt
     result["model_used"] = "gemini-2.5-flash-image"
@@ -278,6 +281,9 @@ def _apply_via_pillow(
 
     duration_ms = int(time.time() * 1000) - start_ms
     result = _save_result(result_bytes, output_path, width, height)
+    result["color_hex"] = target_hex
+    result["method"] = "pillow_fallback"
+    result["cost_cents"] = 0
     result["prompt_used"] = f"Pillow LAB color transfer: {target_hex}"
     result["model_used"] = "pillow_fallback_lab"
     result["duration_ms"] = duration_ms
@@ -305,5 +311,4 @@ def _save_result(result_bytes: bytes, output_path: Path, width: int, height: int
         "png_url": path_to_url(output_path),
         "jpg_url": path_to_url(jpg_path),
         "resolution": f"{width}x{height}",
-        "cost_cents": GEMINI_COST_PER_IMAGE_CENTS,
     }
