@@ -158,7 +158,6 @@ def create_color_variation(
     for color_hex in payload.target_colors:
         safe_hex = color_hex.replace("#", "").upper()
         view_suffix = f"_{image.view}" if image.view else ""
-        output_path = Path(image_path).parent / f"color_{safe_hex}{view_suffix}.png"
 
         job = GenerationJob(
             product_image_id=payload.product_image_id,
@@ -167,8 +166,10 @@ def create_color_variation(
             api_used="gemini",
         )
         db.add(job)
-        db.commit()
-        db.refresh(job)
+        db.flush()  # gera job.id sem commitar
+
+        job_short_id = str(job.id)[:8]
+        output_path = Path(image_path).parent / f"color_{safe_hex}{view_suffix}_{job_short_id}.png"
 
         try:
             result = apply_color_variation(
