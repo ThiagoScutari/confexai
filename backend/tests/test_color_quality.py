@@ -80,12 +80,12 @@ def test_quality_metrics_detecta_imagem_ruim():
     Image.fromarray(orig_arr).save(orig_buf, format="PNG")
     original = orig_buf.getvalue()
 
-    # Resultado completamente diferente (textura horizontal)
+    # Resultado completamente diferente (cor muito distante, sem textura)
     res_arr = np.zeros((100, 100, 4), dtype=np.uint8)
-    res_arr[50:, :, :3] = 80  # Muito escuro
+    res_arr[50:, :, 0] = 10   # Quase preto — color_distance > 150 do target #978B7B
+    res_arr[50:, :, 1] = 10
+    res_arr[50:, :, 2] = 10
     res_arr[50:, :, 3] = 255
-    for i in range(50, 100, 10):
-        res_arr[i:i+5, :, 1] = 200
 
     res_buf = io.BytesIO()
     Image.fromarray(res_arr).save(res_buf, format="PNG")

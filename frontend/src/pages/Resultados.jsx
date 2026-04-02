@@ -543,15 +543,16 @@ export default function Resultados() {
                               <div className="p-2.5">
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                   <div
-                                    className="w-3 h-3 rounded-full border border-white/10 shrink-0"
+                                    className="w-3.5 h-3.5 rounded border border-white/20 shrink-0"
                                     style={{ backgroundColor: colorHex }}
                                   />
-                                  <span className="text-xs font-medium text-neutral-200 truncate">
-                                    {colorName || colorHex}
-                                  </span>
+                                  <span className="text-xs font-mono text-neutral-400">{colorHex}</span>
+                                  {colorName && (
+                                    <span className="text-xs text-neutral-500">· {colorName}</span>
+                                  )}
                                 </div>
-                                <p className="text-xs font-mono text-neutral-600">
-                                  {String(job.id).slice(0, 8)}
+                                <p className="text-[10px] font-mono text-neutral-600 mt-0.5">
+                                  #{String(job.id).slice(0, 8)}
                                 </p>
 
                                 {job.status === "pending_review" && (

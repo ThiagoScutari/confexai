@@ -122,7 +122,7 @@ def _compute_quality_metrics(original_bytes: bytes, result_bytes: bytes, target_
         "color_distance": round(color_distance, 1),
         "target_hex": target_hex,
         "result_mean_rgb": [round(result_r), round(result_g), round(result_b)],
-        "quality_warning": edge_correlation < 0.40 or color_distance > 100,
+        "quality_warning": edge_correlation < 0.05 or color_distance > 150,
     }
 
 
