@@ -285,11 +285,15 @@ def cleanup_broken_jobs(
     Hard deletes jobs where:
     - type is color_variation
     - result is null OR jpg_url is missing OR file does not exist on disk
+
+    Ferramenta de manutenção — hard delete intencional para jobs corrompidos
+    (sem arquivo em disco). Não processa jobs com deleted_at (ADR-003).
     """
     upload_dir = os.getenv("UPLOAD_DIR", "/app/examples/uploads")
 
     jobs = db.query(GenerationJob).filter(
-        GenerationJob.type == JobType.color_variation
+        GenerationJob.type == JobType.color_variation,
+        GenerationJob.deleted_at == None,
     ).all()
 
     deleted = 0
