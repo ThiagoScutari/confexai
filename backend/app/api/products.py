@@ -6,10 +6,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Literal
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import Product, SEODescription, ProductImage
+from app.models import Product, SEODescription, ProductImage, GenerationJob
 from app.schemas.products import ProductCreate, ProductResponse
 from app.schemas.common import StandardResponse
 from app.services.seo_generator import SEOGeneratorService
@@ -93,6 +94,100 @@ def get_product(
     if not product:
         raise HTTPException(404, detail="Produto nao encontrado.")
     return StandardResponse(data=ProductResponse.model_validate(product))
+
+
+@router.get("/{product_id}/summary")
+def get_product_summary(
+    product_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    from app.services.url_helper import path_to_url
+
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_active == True,
+    ).first()
+    if not product:
+        raise HTTPException(404, detail="Produto não encontrado.")
+
+    images = db.query(ProductImage).filter(
+        ProductImage.product_id == product_id,
+        ProductImage.type == "original",
+    ).all()
+
+    image_ids = [img.id for img in images]
+
+    approved_jobs = db.query(GenerationJob).filter(
+        GenerationJob.product_image_id.in_(image_ids),
+        GenerationJob.type == "color_variation",
+        GenerationJob.status == "approved",
+        GenerationJob.deleted_at == None,
+        GenerationJob.is_archived == False,
+    ).all() if image_ids else []
+
+    seo = db.query(SEODescription).filter(
+        SEODescription.product_id == product_id,
+    ).all()
+
+    total_jobs = db.query(GenerationJob).filter(
+        GenerationJob.product_image_id.in_(image_ids),
+        GenerationJob.deleted_at == None,
+    ).count() if image_ids else 0
+
+    total_cost = db.query(
+        func.sum(GenerationJob.cost_cents)
+    ).filter(
+        GenerationJob.product_image_id.in_(image_ids),
+        GenerationJob.deleted_at == None,
+    ).scalar() or 0 if image_ids else 0
+
+    images_data = [{
+        "id": str(img.id),
+        "view": img.view,
+        "original_url": img.original_url,
+        "public_url": path_to_url(img.original_url) if img.original_url else None,
+    } for img in images]
+
+    approved_data = []
+    for job in approved_jobs:
+        result = json.loads(job.result) if job.result else {}
+        approved_data.append({
+            "id": str(job.id),
+            "view": job.product_image.view if job.product_image else None,
+            "color_hex": result.get("color_hex"),
+            "jpg_url": result.get("jpg_url"),
+        })
+
+    seo_data = [{
+        "platform": s.platform,
+        "title": s.title,
+        "description": s.description,
+        "tags": json.loads(s.tags) if s.tags else [],
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    } for s in seo]
+
+    return StandardResponse(data={
+        "product": {
+            "id": str(product.id),
+            "name": product.name,
+            "category": product.category,
+            "fabric": product.fabric,
+            "notes": product.notes,
+            "created_at": product.created_at.isoformat(),
+        },
+        "images": images_data,
+        "approved_variations": approved_data,
+        "seo": seo_data,
+        "stats": {
+            "total_jobs": total_jobs,
+            "total_cost_cents": total_cost,
+            "total_cost_brl": round(total_cost * 0.006, 2),
+            "views_uploaded": len(images),
+            "variations_approved": len(approved_jobs),
+            "platforms_with_seo": len(seo),
+        },
+    })
 
 
 @router.delete("/{product_id}", response_model=StandardResponse[dict])
