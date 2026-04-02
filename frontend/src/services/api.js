@@ -111,3 +111,5 @@ export const generateSEO = (productId, payload) =>
   api.post(`/products/${productId}/seo`, payload);
 export const getSEO = (productId) =>
   api.get(`/products/${productId}/seo`);
+export const getProductSummary = (productId) =>
+  api.get(`/products/${productId}/summary`);

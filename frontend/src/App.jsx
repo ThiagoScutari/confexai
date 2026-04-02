@@ -8,6 +8,7 @@ import Pipeline from "./pages/Pipeline";
 import Resultados from "./pages/Resultados";
 import Historico from "./pages/Historico";
 import SEO from "./pages/SEO";
+import Produto from "./pages/Produto";
 
 function ProtectedRoute({ children }) {
   const { isAuth } = useAuth();
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="resultados" element={<Resultados />} />
               <Route path="resultados/:productId" element={<Resultados />} />
               <Route path="historico" element={<Historico />} />
+              <Route path="produto/:productId" element={<Produto />} />
               <Route path="seo" element={<Navigate to="/produtos" replace />} />
               <Route path="seo/:productId" element={<SEO />} />
             </Route>
