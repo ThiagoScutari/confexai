@@ -245,3 +245,4 @@ docker compose exec db psql -U confexai -d confexai_db
 | 13 | Backlog SEO — updated_at, índice composto, rate limiting no endpoint SEO | 68 |
 | 14 | Documentação — SPEC.md, ROUTE_REFERENCE, design tokens, ADRs | 68 |
 | 15 | UI/UX Virada 360 — skeleton, hierarquia visual, soft delete (deleted_at) | 78 |
+| 16 | PDCA pipeline de cor — colisão de arquivos, job_short_id, Gemini reativado | 84 |
