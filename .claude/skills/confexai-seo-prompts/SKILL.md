@@ -282,3 +282,30 @@ def validate_seo_output(result: dict, platform: str) -> list[str]:
   "tags": ["blusa feminina", "blusa floral", "manga longa", "viscose", "moda feminina", "blusa casual", "roupas femininas", "blusa elegante", "blusa estampada", "moda 2026", "blusa verão", "roupa feminina", "blusa básica", "roupas da moda", "blusa confortável"]
 }
 ```
+
+---
+
+## Regras Implementadas (Sprint 12-13)
+
+### Validação de Plataformas (ADR-012)
+```python
+# SEMPRE usar Literal — nunca list[str]
+from typing import Literal
+PlatformType = Literal["mercadolivre", "shopee", "shopify"]
+platforms: list[PlatformType] = ["mercadolivre", "shopee", "shopify"]
+```
+
+### Rate Limiting (Sprint 13)
+- 30 segundos por produto por usuário
+- Retorna HTTP 429 com mensagem de espera
+- Implementado via dict em memória (`_seo_rate_limit`)
+
+### Campos do Banco (Sprint 13)
+- `updated_at` atualizado a cada regeneração
+- Índice composto `(product_id, platform)` para performance
+- Segunda geração substitui (não duplica)
+
+### Segurança (Sprint 12)
+- Nunca usar `dangerouslySetInnerHTML` para renderizar descrições
+- Usar `whitespace-pre-wrap` para texto simples
+- `description_html` do Shopify renderizado como texto plano no MVP

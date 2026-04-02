@@ -1,222 +1,79 @@
 ---
 name: confexai-architecture-decisions
 description: >
-  Decisões arquiteturais e ADRs do ConfexAI (DRX Têxtil). Use esta SKILL
-  sempre que for sugerir mudanças estruturais, novos padrões, bibliotecas,
-  frameworks, ou abordagens de design no ConfexAI. Também use ao responder
-  perguntas sobre "por que fazemos X dessa forma", ao avaliar trade-offs técnicos,
-  ou ao planejar features que afetam a arquitetura. Esta SKILL previne sugestões
-  que contradizem decisões já tomadas. Consulte sempre antes de propor mudanças
-  estruturais ou de integração de APIs externas.
+  Decisões arquiteturais e ADRs do ConfexAI (DRX Têxtil). Use esta SKILL sempre
+  que for sugerir mudanças estruturais, novos padrões, bibliotecas, frameworks,
+  ou abordagens de design no ConfexAI. Também use ao responder perguntas sobre
+  "por que fazemos X dessa forma", ao avaliar trade-offs técnicos, ou ao planejar
+  features que afetam a arquitetura. Esta SKILL previne sugestões que contradizem
+  decisões já tomadas. Consulte sempre antes de propor mudanças estruturais.
 ---
 
-# ConfexAI — Decisões Arquiteturais (ADRs)
+# ConfexAI — Decisões Arquiteturais
 
-## Stack Tecnológico — Imutável por Decisão
+Ver registro completo em `docs/decisions/ADRs.md`. Este arquivo é o resumo
+operacional para uso no Claude Code.
 
-| Camada | Tecnologia | Alternativas REJEITADAS |
-|--------|-----------|------------------------|
-| Backend | FastAPI + Python 3.12 | Django, Flask |
-| ORM | SQLAlchemy 2.0 | Tortoise, Peewee |
-| Banco | PostgreSQL 16 | MySQL, SQLite |
-| Frontend | React + Vite + TailwindCSS | HTML/JS Vanilla, Vue, Angular |
-| Auth (MVP) | PyJWT + bcrypt | Auth0, Cognito |
-| Auth (SaaS) | Auth0 ou Supabase Auth | Solução própria multi-tenant |
-| Remoção de fundo | rembg (local) + Gemini fallback | Remove.bg API paga |
-| Variação de cor | Gemini Imagen 3 (inpaint com máscara) | Stable Diffusion local, Replicate |
-| Vídeo UGC | KlingAI | Runway, Pika, Sora |
-| SEO/Análise | Claude claude-sonnet-4-20250514 (Anthropic) | GPT-4o, Gemini Flash |
-| Fila assíncrona | NÃO no MVP — PostgreSQL jobs table | Celery, Redis, RabbitMQ |
+## Decisões Imutáveis — Nunca Contestar
 
----
+### Stack e Frameworks
+- **React** no frontend (ADR-001) — estado complexo de pipeline
+- **FastAPI monolito** (ADR-002) — MVP single-developer, sem microserviços
+- **Sem Celery no MVP** (ADR-008) — jobs síncronos, reavaliar com > 500 jobs/dia
 
-## ADR-01 — React no Frontend (não HTML/JS Vanilla)
+### Banco de Dados
+- **Soft delete universal** (ADR-003) — `is_archived` ou `is_active` ou `deleted_at`,
+  nunca `db.delete()` em entidades de negócio
+  - Exceção documentada: `cleanup_broken_jobs` faz hard delete de jobs corrompidos
+    sem arquivo em disco (ferramenta de manutenção, não entidade de negócio)
+- **Migrations manuais** (ADR-004) — scripts idempotentes em `migrations/migrate_sprint_NN.py`
+  com rollback correspondente `rollback_sprint_NN.py`
 
-**Decisão:** React + Vite + TailwindCSS.
-
-**Contexto:** ConfexAI tem estado complexo que o SGP Costura não tem:
-fila de imagens, progresso por etapa de processamento, múltiplas variações
-simultâneas, preview de máscara de estampa, player de vídeo.
-
-**Por quê não Vanilla JS:**
-- Gerenciar estado de uma fila de 5 variações de cor com etapas
-  (upload → remoção de fundo → detecção de estampa → geração → revisão)
-  em Vanilla JS resultaria em código frágil e difícil de manter
-- React permite componentização real (JobCard, ColorPicker, MaskEditor)
-- Visão SaaS exige routing, auth, dashboards — React escala bem nisso
-
-**Rejeitar:** Sugestões de voltar para Vanilla JS, Alpine.js, ou HTMX.
-
----
-
-## ADR-02 — Sem Fila Assíncrona no MVP
-
-**Decisão:** Jobs síncronos no MVP. Tabela `generation_jobs` no PostgreSQL
-como preparação para fila futura.
-
-**Contexto:** Volume do MVP é ~10 SKUs × 5 cores = 50 gerações/ciclo.
-Cada geração leva 5–15 segundos. Não justifica Celery + Redis.
-
-**Como funciona no MVP:**
-- Endpoint POST `/api/jobs` cria o job no banco (status: `pending`)
-- Worker thread do FastAPI executa a geração e atualiza status
-- Frontend faz polling a cada 3s no endpoint GET `/api/jobs/{id}`
-
-**Migração para fila real (Fase 3):**
-- Substituir worker thread por Celery worker
-- Adicionar Redis como broker
-- Nenhuma mudança no modelo de dados nem na API pública
-
-**Rejeitar:** Sugestões de adicionar Celery no MVP.
-
----
-
-## ADR-03 — rembg Local como Primeira Camada de Remoção de Fundo
-
-**Decisão:** `rembg` (Python, gratuito, local) como motor primário.
-Gemini Vision como fallback para casos complexos.
-
-**Por quê:**
-- Custo zero para o volume do MVP
-- rembg funciona muito bem para peças sobre fundo branco/neutro
-- Latência menor (sem chamada de rede)
-
-**Quando usar Gemini fallback:**
-- Score de confiança do rembg < 0.85
-- Fundo não é branco/neutro
-- Peça tem transparências (renda, tule)
-
-**Rejeitar:** Remove.bg (pago por imagem), sugestão de usar sempre Gemini.
-
----
-
-## ADR-04 — Detecção de Regiões Protegidas via Claude Vision
-
-**Decisão:** Claude claude-sonnet-4-20250514 com visão analisa a peça e retorna
-coordenadas/máscara de regiões protegidas (estampas, bordados, patches).
-
-**Contexto:** Regra de negócio crítica — estampas e bordados nunca mudam
-de cor junto com a peça base. O sistema deve preservar essas regiões.
-
-**Fluxo:**
-1. Claude Vision recebe o PNG da peça + prompt de detecção
-2. Retorna JSON com bounding boxes das regiões protegidas
-3. Sistema gera máscara binária a partir das bounding boxes
-4. Operador revisa e ajusta a máscara via interface visual
-5. Gemini Imagen aplica inpaint SOMENTE na área não mascarada
-
-**Formato de retorno do Claude:**
-```json
-{
-  "protected_regions": [
-    {
-      "type": "estampa",
-      "description": "estampa floral no centro do corpo",
-      "bbox": {"x": 120, "y": 80, "width": 200, "height": 180},
-      "confidence": 0.94
-    }
-  ],
-  "has_protected_regions": true
-}
-```
-
-**Rejeitar:** Detectar regiões via prompt dentro do Gemini Imagen
-(não confiável), ou pular detecção e deixar só para o operador.
-
----
-
-## ADR-05 — Aprovação Humana Obrigatória no MVP
-
-**Decisão:** Nenhum asset sai do sistema sem revisão humana no MVP.
-
-**Fluxo de aprovação:**
-```
-Geração → status: pending_review → Operador revisa → approved/rejected
-```
-
-**Jobs rejeitados:**
-- Podem ser regenerados com parâmetros ajustados (ex: intensidade de cor menor)
-- Motivo de rejeição registrado no banco para análise de qualidade
-
-**Automação futura (Fase 3):**
-- Score de qualidade automático baseado em histórico de aprovações
-- Auto-aprovar quando score > threshold configurável
-
-**Rejeitar:** Sugestão de tornar aprovação opcional no MVP.
-
----
-
-## ADR-06 — Tracking de Custo por Job
-
-**Decisão:** Todo job de geração registra custo estimado em centavos.
-
-**Por quê:** Viabilidade SaaS depende de entender custo real por operação.
-Com 10 SKUs × 5 cores no MVP, já dá para calibrar preço do serviço.
-
-**Tabela `generation_jobs`:**
+### APIs de IA
+- **google-genai SDK** (ADR-006) — não usar `google-generativeai` (legado)
 ```python
-cost_cents: int      # custo estimado em centavos BRL
-api_used: str        # "anthropic" | "gemini" | "klingai" | "rembg"
-tokens_used: int     # para APIs baseadas em tokens
+  # CORRETO
+  from google import genai
+  from google.genai import types
+  config=types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"])
+
+  # PROIBIDO — causa HTTP 400
+  response_mime_type="image/png"
 ```
+- **Pillow fallback** (ADR-007) — automático se Gemini falhar, registrar `fallback_reason`
+- **rembg local** (ADR-005) — motor primário de remoção de fundo, gratuito
 
-**Rejeitar:** Deixar custo como "TBD" para fase SaaS.
-
----
-
-## ADR-07 — Migrações Manuais (mesmo padrão do SGP)
-
-**Decisão:** Scripts Python idempotentes em `backend/app/migrations/`.
-Sem Alembic. Sem auto-migrate no startup.
-
-**Padrão:**
-```
-backend/app/migrations/
-  migrate_sprint_NN.py   ← aplica mudança
-  revert_sprint_NN.py    ← rollback
-```
-
-**Rejeitar:** Alembic, auto-migrate, Django-style migrations.
-
----
-
-## ADR-08 — Soft Delete Universal
-
-**Decisão:** Nunca hard delete em entidades de negócio.
-
+### Pipeline de Imagem (PDCA Sprint 16)
+- **`job_short_id` no output_path** — obrigatório para evitar colisão de arquivos
 ```python
-# ✅ CORRETO
-is_active: bool = Column(Boolean, default=True)
+  # CORRETO — único por job
+  job_short_id = str(job.id)[:8]
+  output_path = Path(image_path).parent / f"color_{safe_hex}{view_suffix}_{job_short_id}.png"
 
-# ❌ PROIBIDO em entidade de negócio
-db.delete(entity)
+  # PROIBIDO — causa colisão entre execuções
+  output_path = Path(image_path).parent / f"color_{safe_hex}{view_suffix}.png"
 ```
+- **`db.flush()` antes de construir output_path** — para que `job.id` exista
+- **`color_hex` no result JSON** — sempre incluir, frontend depende disso
 
-**Entidades protegidas:** `products`, `product_images`, `seo_descriptions`,
-`generation_jobs`.
+### Segurança e Validação
+- **`dangerouslySetInnerHTML` proibido** (ADR-013) com conteúdo externo
+- **`Literal` types no Pydantic** (ADR-012) para campos com valores fixos
+- **CORS inclui PATCH e DELETE** (ADR-010) — necessário para archive/unarchive/delete
+- **Auditoria `sgp-sprint-review` obrigatória antes do commit** (ADR-015)
 
----
+### Frontend
+- **Tema "Industrial Refinado"** — dark, amber (#f59e0b), DM fonts
+- **Nunca usar** Inter, Roboto, system-ui, purple gradients, fundo branco
 
-## ADR-09 — Output Padrão de Imagens
+## Antipadrões que Quebraram Sprints
 
-**Decisão:** Toda imagem gerada é exportada em dois formatos:
-- `JPG 1200×1200px` — para upload nas plataformas (ML, Shopee, Shopify)
-- `PNG com fundo transparente` — para uso editorial e composições futuras
-
-**Sem marca d'água** (decisão de negócio confirmada).
-
-**Rejeitar:** Sugestões de outros formatos ou resoluções como padrão.
-
----
-
-## O que NÃO Fazer — Anti-Patterns
-
-| Anti-pattern | Por quê é proibido | Alternativa |
-|-------------|-------------------|-------------|
-| Celery + Redis no MVP | Overkill para volume atual | PostgreSQL jobs table + polling |
-| Remove.bg API | Pago por imagem, custo desnecessário | rembg local + Gemini fallback |
-| Gemini para SEO/análise | Claude tem melhor visão de produto têxtil | Claude claude-sonnet-4-20250514 |
-| Publicação automática no MVP | Sem aprovação humana, risco de erro | Export manual, aprovação obrigatória |
-| Hard delete de jobs | Perde histórico de custo e qualidade | `is_active = False` |
-| Alembic | Risco em produção | Scripts manuais idempotentes |
-| Vanilla JS no frontend | Estado complexo ingerenciável | React + Vite |
+| Antipadrão | Sprint | Consequência |
+|---|---|---|
+| `response_mime_type: "image/png"` | 03 | HTTP 400 no Gemini |
+| `original.png` sem view no nome | 10 | Sobrescreve outras views |
+| `color_{HEX}_{VIEW}.png` sem job_id | 16 | Colisão entre execuções |
+| `dangerouslySetInnerHTML` sem sanitização | 12 | XSS |
+| CORS sem PATCH | 07 | Archive falha silenciosamente |
+| `db.delete()` em entidade de negócio | 01 | Dados perdidos |
+| API externa sem mock em teste | 02 | Custo real + flakiness |
